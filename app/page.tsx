@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { candidates } from "@/data/candidates";
+import Turnstile from "react-turnstile";
 
 const MAX_SELECTED = 80;
 const RESULTS_DATE = new Date("2026-05-16T23:59:59+02:00");
@@ -62,6 +63,7 @@ export default function HomePage() {
   const [showSummary, setShowSummary] = useState(false);
   const [now, setNow] = useState(new Date());
   const [shareCopied, setShareCopied] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState("");
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
@@ -389,7 +391,10 @@ export default function HomePage() {
       setError("Увядзіце прагноз агульнай колькасці галасоў.");
       return false;
     }
-
+    if (!turnstileToken) {
+      setError("Прайдзіце праверку бяспекі.");
+      return false;
+    }
     return true;
   };
 
@@ -414,6 +419,7 @@ export default function HomePage() {
           selectedCandidateIds: selectedIds,
           failedThresholdFactions,
           predictedTotalVotes: Number(predictedTotalVotes),
+          turnstileToken,
         }),
       });
 
@@ -802,17 +808,31 @@ export default function HomePage() {
               maxLength={40}
               className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-slate-950 outline-none transition focus:ring-4 focus:ring-blue-500/30"
             />
-
+          
             <button
               type="button"
               onClick={openSummary}
-              disabled={selectedIds.length !== MAX_SELECTED || isSubmitting}
+              disabled={
+                selectedIds.length !== MAX_SELECTED ||
+                isSubmitting ||
+                !turnstileToken
+              }
               className="min-h-14 rounded-2xl bg-blue-600 px-7 font-black text-white transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
             >
               {isSubmitting ? "Адпраўляем..." : "Праверыць і адправіць"}
             </button>
           </div>
-
+          <div className="mt-4 rounded-2xl border border-white/10 bg-white p-4">
+            <Turnstile
+              sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
+              onVerify={(token) => setTurnstileToken(token)}
+              onExpire={() => setTurnstileToken("")}
+              onError={() => {
+                setTurnstileToken("");
+                setError("Не атрымалася загрузіць праверку бяспекі.");
+              }}
+            />
+          </div>
           {error && (
             <p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
               {error}
