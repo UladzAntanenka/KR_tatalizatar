@@ -8,6 +8,9 @@ const RESULTS_DATE = new Date("2026-05-16T23:59:59+02:00");
 
 export default function HomePage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [failedThresholdFactions, setFailedThresholdFactions] = useState<
+    string[]
+  >([]);
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
@@ -21,56 +24,167 @@ export default function HomePage() {
 
   const factions = useMemo(() => {
     const grouped: Record<string, typeof candidates> = {};
+
     for (const candidate of candidates) {
-      if (!grouped[candidate.faction]) grouped[candidate.faction] = [];
+      if (!grouped[candidate.faction]) {
+        grouped[candidate.faction] = [];
+      }
+
       grouped[candidate.faction].push(candidate);
     }
+
     return grouped;
   }, []);
 
   const timeLeft = useMemo(() => {
     const diff = Math.max(0, RESULTS_DATE.getTime() - now.getTime());
 
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
-    const minutes = Math.floor((diff / (1000 * 60)) % 60);
-    const seconds = Math.floor((diff / 1000) % 60);
-
-    return { days, hours, minutes, seconds };
+    return {
+      days: Math.floor(diff / (1000 * 60 * 60 * 24)),
+      hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
+      minutes: Math.floor((diff / (1000 * 60)) % 60),
+      seconds: Math.floor((diff / 1000) % 60),
+    };
   }, [now]);
 
-  const toggleCandidate = (candidateId: string) => {
+  const progressPercent = Math.round((selectedIds.length / MAX_SELECTED) * 100);
+
+  const getSelectedCountByFaction = (faction: string) => {
+    return candidates.filter(
+      (candidate) =>
+        candidate.faction === faction && selectedIds.includes(candidate.id)
+    ).length;
+  };
+
+  const selectFactionCount = (faction: string, count: number) => {
     setError("");
 
-    const isSelected = selectedIds.includes(candidateId);
+    const factionCandidates = candidates
+      .filter((candidate) => candidate.faction === faction)
+      .sort((a, b) => a.listNumber - b.listNumber);
 
-    if (isSelected) {
-      setSelectedIds((prev) => prev.filter((id) => id !== candidateId));
-      return;
-    }
+    const factionIds = factionCandidates.map((candidate) => candidate.id);
 
-    if (selectedIds.length >= MAX_SELECTED) {
+    const idsFromOtherFactions = selectedIds.filter(
+      (id) => !factionIds.includes(id)
+    );
+
+    const idsFromThisFaction = factionCandidates
+      .slice(0, count)
+      .map((candidate) => candidate.id);
+
+    const nextSelectedIds = [...idsFromOtherFactions, ...idsFromThisFaction];
+
+    if (nextSelectedIds.length > MAX_SELECTED) {
       setError(
-        "Вы ўжо абралі 80 кандыдатаў. Каб выбраць іншага, спачатку зніміце выбар з аднаго з абраных."
+        "Гэты выбар перавысіць ліміт у 80 кандыдатаў. Абярыце менш людзей у гэтым спісе або зніміце частку ўжо абраных."
       );
       return;
     }
 
-    setSelectedIds((prev) => [...prev, candidateId]);
+    setSelectedIds(nextSelectedIds);
+  };
+
+  const toggleCandidate = (candidateId: string) => {
+    setError("");
+
+    const candidate = candidates.find((item) => item.id === candidateId);
+    if (!candidate) return;
+
+    const factionCandidates = candidates
+      .filter((item) => item.faction === candidate.faction)
+      .sort((a, b) => a.listNumber - b.listNumber);
+
+    const candidateIndex = factionCandidates.findIndex(
+      (item) => item.id === candidateId
+    );
+
+    const isSelected = selectedIds.includes(candidateId);
+
+    if (isSelected) {
+      const idsToRemove = factionCandidates
+        .slice(candidateIndex)
+        .map((item) => item.id);
+
+      setSelectedIds((prev) =>
+        prev.filter((id) => !idsToRemove.includes(id))
+      );
+      return;
+    }
+
+    const idsToAdd = factionCandidates
+      .slice(0, candidateIndex + 1)
+      .map((item) => item.id);
+
+    const nextSelectedIds = Array.from(new Set([...selectedIds, ...idsToAdd]));
+
+    if (nextSelectedIds.length > MAX_SELECTED) {
+      setError(
+        "Гэты выбар перавысіць ліміт у 80 кандыдатаў. Абярыце менш людзей у гэтым спісе або зніміце частку ўжо абраных."
+      );
+      return;
+    }
+
+    setSelectedIds(nextSelectedIds);
   };
 
   const selectRandomCandidates = () => {
     setError("");
 
-    const shuffled = [...candidates].sort(() => Math.random() - 0.5);
-    const randomIds = shuffled.slice(0, MAX_SELECTED).map((item) => item.id);
+    const factionNames = Object.keys(factions);
+    const selected = new Set<string>();
+    let attempts = 0;
 
-    setSelectedIds(randomIds);
+    while (selected.size < MAX_SELECTED && attempts < 1000) {
+      attempts += 1;
+
+      const randomFaction =
+        factionNames[Math.floor(Math.random() * factionNames.length)];
+
+      const factionCandidates = candidates
+        .filter((candidate) => candidate.faction === randomFaction)
+        .sort((a, b) => a.listNumber - b.listNumber);
+
+      const randomCount =
+        Math.floor(Math.random() * factionCandidates.length) + 1;
+
+      const idsToAdd = factionCandidates
+        .slice(0, randomCount)
+        .map((candidate) => candidate.id);
+
+      const nextSelected = new Set([...selected, ...idsToAdd]);
+
+      if (nextSelected.size <= MAX_SELECTED) {
+        idsToAdd.forEach((id) => selected.add(id));
+      }
+    }
+
+    if (selected.size !== MAX_SELECTED) {
+      const remainingCandidates = candidates.filter(
+        (candidate) => !selected.has(candidate.id)
+      );
+
+      for (const candidate of remainingCandidates) {
+        if (selected.size >= MAX_SELECTED) break;
+        selected.add(candidate.id);
+      }
+    }
+
+    setSelectedIds(Array.from(selected).slice(0, MAX_SELECTED));
   };
 
   const clearSelection = () => {
     setSelectedIds([]);
+    setFailedThresholdFactions([]);
     setError("");
+  };
+
+  const toggleFailedThresholdFaction = (faction: string) => {
+    setFailedThresholdFactions((prev) =>
+      prev.includes(faction)
+        ? prev.filter((item) => item !== faction)
+        : [...prev, faction]
+    );
   };
 
   const handleSubmit = async () => {
@@ -97,6 +211,7 @@ export default function HomePage() {
         body: JSON.stringify({
           nickname: nickname.trim(),
           selectedCandidateIds: selectedIds,
+          failedThresholdFactions,
         }),
       });
 
@@ -114,8 +229,6 @@ export default function HomePage() {
       setIsSubmitting(false);
     }
   };
-
-  const progressPercent = Math.round((selectedIds.length / MAX_SELECTED) * 100);
 
   if (submitted) {
     return (
@@ -135,18 +248,7 @@ export default function HomePage() {
           </p>
         </section>
 
-        <style jsx global>{`
-          @keyframes fadeUp {
-            from {
-              opacity: 0;
-              transform: translateY(18px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-        `}</style>
+        <GlobalStyles />
       </main>
     );
   }
@@ -157,17 +259,17 @@ export default function HomePage() {
         <div className="pointer-events-none absolute -right-32 top-0 h-80 w-80 rounded-full bg-blue-100 blur-3xl" />
         <div className="pointer-events-none absolute -left-32 top-72 h-80 w-80 rounded-full bg-amber-100 blur-3xl" />
 
-        <section className="relative mb-8 grid gap-6 rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-[0_20px_100px_rgba(15,23,42,0.08)] md:grid-cols-[1.4fr_0.8fr] md:p-10">
+        <section className="relative mb-8 rounded-[2.5rem] border border-slate-100 bg-white p-6 shadow-[0_20px_100px_rgba(15,23,42,0.08)] md:p-10">
           <div className="animate-[fadeUp_0.55s_ease-out]">
             <p className="mb-4 inline-flex rounded-full bg-blue-50 px-4 py-2 text-sm font-bold text-blue-700">
               Таталізатар перад выбарамі ў Каардынацыйную раду
             </p>
 
-            <h1 className="mb-5 max-w-4xl text-4xl font-black leading-tight tracking-tight md:text-6xl">
+            <h1 className="mb-5 max-w-5xl text-4xl font-black leading-tight tracking-tight md:text-6xl">
               Абярыце 80 дэлегатаў і праверце сваю палітычную інтуіцыю
             </h1>
 
-            <p className="max-w-3xl text-lg leading-8 text-slate-650">
+            <p className="max-w-3xl text-lg leading-8 text-slate-600">
               На сайце сабраныя 172 кандыдаты з 9 спісаў. Ваша задача —
               прадказаць, хто ўвойдзе ў склад Каардынацыйнай рады. Пасля
               абвяшчэння вынікаў мы пакажам табліцу лідараў і дашборд.
@@ -180,28 +282,32 @@ export default function HomePage() {
               >
                 Перайсці да выбару
               </a>
-
-              <button
-                type="button"
-                onClick={selectRandomCandidates}
-                className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-bold text-slate-900 transition hover:-translate-y-0.5 hover:border-blue-300 hover:bg-blue-50"
-              >
-                Выбраць выпадкова
-              </button>
             </div>
           </div>
+        </section>
 
-          <div className="animate-[fadeUp_0.7s_ease-out] rounded-[2rem] bg-slate-950 p-6 text-white">
-            <p className="mb-3 text-sm font-bold uppercase tracking-[0.2em] text-blue-300">
-              Да абвяшчэння вынікаў
-            </p>
-
-            <div className="grid grid-cols-2 gap-3">
-              <TimerBox label="дзён" value={timeLeft.days} />
-              <TimerBox label="гадзін" value={timeLeft.hours} />
-              <TimerBox label="хвілін" value={timeLeft.minutes} />
-              <TimerBox label="секунд" value={timeLeft.seconds} />
+        <section className="relative mb-8 animate-[fadeUp_0.65s_ease-out] rounded-[2.5rem] bg-slate-950 p-6 text-white shadow-[0_20px_80px_rgba(15,23,42,0.18)] md:p-8">
+          <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+            <div>
+              <p className="mb-2 text-sm font-bold uppercase tracking-[0.25em] text-blue-300">
+                Таймер
+              </p>
+              <h2 className="text-3xl font-black md:text-5xl">
+                Да абвяшчэння вынікаў выбараў
+              </h2>
             </div>
+
+            <p className="max-w-xl text-slate-300">
+              Пасля абвяшчэння вынікаў мы адкрыем табліцу лідараў і
+              статыстычны дашборд па выбары кандыдатаў і фракцый.
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-4">
+            <WideTimerBox label="дзён" value={timeLeft.days} />
+            <WideTimerBox label="гадзін" value={timeLeft.hours} />
+            <WideTimerBox label="хвілін" value={timeLeft.minutes} />
+            <WideTimerBox label="секунд" value={timeLeft.seconds} />
           </div>
         </section>
 
@@ -213,12 +319,12 @@ export default function HomePage() {
 
           <InfoCard
             title="Як удзельнічаць?"
-            text="Абярыце роўна 80 кандыдатаў з любых спісаў, увядзіце нікнэйм і адпраўце прагноз. Пасля 80 выбараў новыя карткі будуць заблакаваныя."
+            text="Абярыце роўна 80 кандыдатаў. Унутры кожнага спісу выбар ідзе паслядоўна: калі абраць №12, аўтаматычна абіраюцца №1–12."
           />
 
           <InfoCard
             title="Як лічацца балы?"
-            text="Кожны правільна ўгаданы дэлегат дадае балы. Максімум — 100. Калі ў некалькіх людзей аднолькавы вынік, вышэй будзе той, хто адправіў прагноз раней."
+            text="Асноўныя балы налічваюцца за правільна ўгаданых дэлегатаў. Дадатковыя балы можна атрымаць за прагноз спісаў, якія не пераадолеюць 3%."
           />
         </section>
 
@@ -269,7 +375,7 @@ export default function HomePage() {
         </div>
 
         <section id="candidates" className="relative space-y-8 scroll-mt-28">
-          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
               <p className="text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
                 Спісы і кандыдаты
@@ -279,9 +385,20 @@ export default function HomePage() {
               </h2>
             </div>
 
-            <p className="max-w-xl text-slate-600">
-              Можна выбіраць кандыдатаў з любых фракцый без абмежаванняў.
-            </p>
+            <div className="flex flex-col gap-3 md:items-end">
+              <p className="max-w-xl text-slate-600">
+                Можна хутка выбраць колькасць людзей ад кожнага спісу. Калі
+                выбраць 12, аўтаматычна абіраюцца кандыдаты №1–12.
+              </p>
+
+              <button
+                type="button"
+                onClick={selectRandomCandidates}
+                className="rounded-2xl bg-blue-600 px-5 py-3 font-bold text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
+              >
+                Выбраць выпадкова
+              </button>
+            </div>
           </div>
 
           {Object.entries(factions).map(([faction, factionCandidates], i) => (
@@ -290,12 +407,34 @@ export default function HomePage() {
               className="animate-[fadeUp_0.5s_ease-out] rounded-[2rem] border border-slate-100 bg-white p-5 shadow-[0_12px_50px_rgba(15,23,42,0.06)] md:p-7"
               style={{ animationDelay: `${i * 40}ms` }}
             >
-              <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+              <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                 <div>
                   <h3 className="text-2xl font-black">{faction}</h3>
                   <p className="text-sm font-medium text-slate-500">
                     Кандыдатаў у спісе: {factionCandidates.length}
                   </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  <label className="text-sm font-bold text-slate-600">
+                    Колькі пройдзе:
+                  </label>
+
+                  <select
+                    value={getSelectedCountByFaction(faction)}
+                    onChange={(event) =>
+                      selectFactionCount(faction, Number(event.target.value))
+                    }
+                    className="rounded-2xl border border-slate-200 bg-white px-4 py-2 font-bold outline-none transition focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
+                  >
+                    {Array.from({ length: factionCandidates.length + 1 }).map(
+                      (_, index) => (
+                        <option key={index} value={index}>
+                          {index}
+                        </option>
+                      )
+                    )}
+                  </select>
                 </div>
               </div>
 
@@ -350,6 +489,44 @@ export default function HomePage() {
           ))}
         </section>
 
+        <section className="relative mt-8 rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_12px_50px_rgba(15,23,42,0.06)] md:p-8">
+          <p className="mb-2 text-sm font-bold uppercase tracking-[0.2em] text-blue-600">
+            Дадатковы прагноз
+          </p>
+
+          <h2 className="mb-3 text-3xl font-black">
+            Якія спісы не пераадолеюць парог 3%?
+          </h2>
+
+          <p className="mb-5 max-w-3xl leading-7 text-slate-600">
+            Адзначце спісы, якія, на вашу думку, не набяруць больш за 3% ад
+            агульнай колькасці галасоў. За правільны прагноз можна будзе
+            атрымаць дадатковыя балы.
+          </p>
+
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+            {Object.keys(factions).map((faction) => {
+              const isSelected = failedThresholdFactions.includes(faction);
+
+              return (
+                <button
+                  key={faction}
+                  type="button"
+                  onClick={() => toggleFailedThresholdFaction(faction)}
+                  className={[
+                    "rounded-3xl border p-4 text-left font-bold transition",
+                    isSelected
+                      ? "border-red-500 bg-red-50 text-red-700 ring-2 ring-red-500"
+                      : "border-slate-200 bg-white text-slate-800 hover:-translate-y-1 hover:border-red-300 hover:bg-red-50",
+                  ].join(" ")}
+                >
+                  {faction}
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
         <section className="relative mt-8 rounded-[2rem] border border-slate-100 bg-slate-950 p-6 text-white shadow-[0_20px_80px_rgba(15,23,42,0.18)] md:p-8">
           <h2 className="mb-3 text-3xl font-black">Адправіць прагноз</h2>
 
@@ -385,33 +562,20 @@ export default function HomePage() {
         </section>
       </section>
 
-      <style jsx global>{`
-        html {
-          scroll-behavior: smooth;
-        }
-
-        @keyframes fadeUp {
-          from {
-            opacity: 0;
-            transform: translateY(18px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
+      <GlobalStyles />
     </main>
   );
 }
 
-function TimerBox({ label, value }: { label: string; value: number }) {
+function WideTimerBox({ label, value }: { label: string; value: number }) {
   return (
-    <div className="rounded-3xl bg-white/10 p-4 text-center ring-1 ring-white/10">
-      <p className="text-3xl font-black tabular-nums">
+    <div className="rounded-[2rem] bg-white/10 p-5 text-center ring-1 ring-white/10">
+      <p className="text-5xl font-black tabular-nums md:text-6xl">
         {String(value).padStart(2, "0")}
       </p>
-      <p className="mt-1 text-sm font-semibold text-slate-300">{label}</p>
+      <p className="mt-2 text-sm font-bold uppercase tracking-[0.2em] text-slate-300">
+        {label}
+      </p>
     </div>
   );
 }
@@ -422,5 +586,26 @@ function InfoCard({ title, text }: { title: string; text: string }) {
       <h3 className="mb-3 text-xl font-black">{title}</h3>
       <p className="leading-7 text-slate-600">{text}</p>
     </div>
+  );
+}
+
+function GlobalStyles() {
+  return (
+    <style jsx global>{`
+      html {
+        scroll-behavior: smooth;
+      }
+
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(18px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    `}</style>
   );
 }
