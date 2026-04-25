@@ -6,6 +6,38 @@ import { candidates } from "@/data/candidates";
 const MAX_SELECTED = 80;
 const RESULTS_DATE = new Date("2026-05-16T23:59:59+02:00");
 
+const FACTION_ORDER = [
+  "Ваш Голас",
+  "Спіс 'Еўрапейскі выбар",
+  "Хватит бояться!",
+  "Рух Воля",
+  "Аб'яднанная Грамадзянская Платформа",
+  "Наступ",
+  "ЗАКОН и Правопорядок",
+  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»",
+  'Кааліцыя Латушка і Рух "За Свабоду',
+];
+
+const PROGRAM_LINKS: Record<string, string> = {
+  "Ваш Голас":
+    "https://rada.vision/wp-content/uploads/2026/04/Pragrama_Vash-golas-.pdf",
+  "Спіс 'Еўрапейскі выбар":
+    "https://rada.vision/wp-content/uploads/2026/04/Pragrama_vybarchaga_spisu_E-rapejski_vybar.pdf",
+  "Хватит бояться!":
+    "https://rada.vision/wp-content/uploads/2026/04/Hvatit-Boyatsya.pdf",
+  "Рух Воля":
+    "https://rada.vision/wp-content/uploads/2026/04/Pragrama_Volia.pdf/",
+  "Аб'яднанная Грамадзянская Платформа":
+    "https://rada.vision/wp-content/uploads/2026/04/Palitychnaya-pragrama-spisu-AGP-.pdf",
+  Наступ: "https://rada.vision/wp-content/uploads/2026/04/Nastup.pdf",
+  "ЗАКОН и Правопорядок":
+    "https://rada.vision/wp-content/uploads/2026/04/Programma-ODZP-.pdf",
+  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»":
+    "https://rada.vision/wp-content/uploads/2026/04/Belarusy-dzeyannya.pdf",
+  'Кааліцыя Латушка і Рух "За Свабоду':
+    "https://rada.vision/wp-content/uploads/2026/04/PRAGRAMA-LRZS-.pdf",
+};
+
 export default function HomePage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [failedThresholdFactions, setFailedThresholdFactions] = useState<
@@ -17,6 +49,7 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [now, setNow] = useState(new Date());
 
   useEffect(() => {
@@ -35,8 +68,14 @@ export default function HomePage() {
     return grouped;
   }, []);
 
+  const orderedFactionEntries = useMemo(() => {
+    return FACTION_ORDER.filter((faction) => factions[faction]).map(
+      (faction) => [faction, factions[faction]] as const
+    );
+  }, [factions]);
+
   useEffect(() => {
-    setOpenFactions(Object.keys(factions));
+    setOpenFactions(FACTION_ORDER.filter((faction) => factions[faction]));
   }, [factions]);
 
   const timeLeft = useMemo(() => {
@@ -81,6 +120,7 @@ export default function HomePage() {
     }
 
     const factionCandidates = getFactionCandidates(faction);
+    const safeCount = Math.max(0, Math.min(count, factionCandidates.length));
     const factionIds = factionCandidates.map((item) => item.id);
 
     const otherSelectedIds = selectedIds.filter(
@@ -88,7 +128,7 @@ export default function HomePage() {
     );
 
     const newFactionIds = factionCandidates
-      .slice(0, count)
+      .slice(0, safeCount)
       .map((item) => item.id);
 
     const nextSelectedIds = [...otherSelectedIds, ...newFactionIds];
@@ -99,6 +139,11 @@ export default function HomePage() {
     }
 
     setSelectedIds(nextSelectedIds);
+  };
+
+  const changeFactionCount = (faction: string, delta: number) => {
+    const current = getSelectedCountByFaction(faction);
+    selectFactionCount(faction, current + delta);
   };
 
   const toggleCandidate = (candidateId: string) => {
@@ -113,7 +158,6 @@ export default function HomePage() {
     }
 
     const factionCandidates = getFactionCandidates(candidate.faction);
-
     const candidateIndex = factionCandidates.findIndex(
       (item) => item.id === candidateId
     );
@@ -136,9 +180,7 @@ export default function HomePage() {
     const nextSelectedIds = Array.from(new Set([...selectedIds, ...idsToAdd]));
 
     if (nextSelectedIds.length > MAX_SELECTED) {
-      setError(
-        "Гэты выбар перавысіць ліміт у 80 кандыдатаў. Абярыце менш людзей у гэтым спісе."
-      );
+      setError("Гэты выбар перавысіць ліміт у 80 кандыдатаў.");
       return;
     }
 
@@ -199,9 +241,7 @@ export default function HomePage() {
     }
 
     if (selected.size !== MAX_SELECTED) {
-      setError(
-        "Не атрымалася дабраць да 80. Паспрабуйце зняць частку абмежаванняў або абраць менш у некаторых спісах."
-      );
+      setError("Не атрымалася дабраць да 80. Паспрабуйце змяніць выбар.");
       return;
     }
 
@@ -210,41 +250,7 @@ export default function HomePage() {
 
   const randomizeAll = () => {
     setSelectedIds([]);
-    setTimeout(() => {
-      const selected = new Set<string>();
-      const availableFactions = Object.keys(factions).filter(
-        (faction) => !failedThresholdFactions.includes(faction)
-      );
-
-      let attempts = 0;
-
-      while (selected.size < MAX_SELECTED && attempts < 10000) {
-        attempts++;
-
-        const randomFaction =
-          availableFactions[
-            Math.floor(Math.random() * availableFactions.length)
-          ];
-
-        const factionCandidates = getFactionCandidates(randomFaction);
-        const randomCandidate =
-          factionCandidates[
-            Math.floor(Math.random() * factionCandidates.length)
-          ];
-
-        const idsToAdd = factionCandidates
-          .filter((item) => item.listNumber <= randomCandidate.listNumber)
-          .map((item) => item.id);
-
-        const nextSelected = new Set([...selected, ...idsToAdd]);
-
-        if (nextSelected.size <= MAX_SELECTED) {
-          idsToAdd.forEach((id) => selected.add(id));
-        }
-      }
-
-      setSelectedIds(Array.from(selected));
-    }, 120);
+    setTimeout(fillRandomTo80, 120);
   };
 
   const clearSelection = () => {
@@ -252,23 +258,34 @@ export default function HomePage() {
     setError("");
   };
 
-  const handleSubmit = async () => {
+  const validateBeforeSubmit = () => {
     setError("");
 
     if (selectedIds.length !== MAX_SELECTED) {
       setError("Трэба выбраць роўна 80 кандыдатаў.");
-      return;
+      return false;
     }
 
     if (!nickname.trim()) {
       setError("Увядзіце нікнэйм.");
-      return;
+      return false;
     }
 
     if (!predictedTotalVotes || Number(predictedTotalVotes) <= 0) {
       setError("Увядзіце прагноз агульнай колькасці галасоў.");
-      return;
+      return false;
     }
+
+    return true;
+  };
+
+  const openDisclaimer = () => {
+    if (!validateBeforeSubmit()) return;
+    setShowDisclaimer(true);
+  };
+
+  const handleSubmit = async () => {
+    if (!validateBeforeSubmit()) return;
 
     try {
       setIsSubmitting(true);
@@ -290,12 +307,15 @@ export default function HomePage() {
 
       if (!response.ok) {
         setError(data.error || "Не атрымалася адправіць прагноз.");
+        setShowDisclaimer(false);
         return;
       }
 
       setSubmitted(true);
+      setShowDisclaimer(false);
     } catch {
       setError("Памылка злучэння з серверам.");
+      setShowDisclaimer(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -329,11 +349,10 @@ export default function HomePage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#fbfaf7] text-slate-950">
+    <main className="min-h-screen overflow-hidden bg-[#fbfaf7] pb-32 text-slate-950">
       <section className="relative mx-auto max-w-7xl px-4 py-8 md:py-12">
         <div className="pointer-events-none absolute -right-32 top-0 h-96 w-96 rounded-full bg-blue-200/70 blur-3xl" />
         <div className="pointer-events-none absolute -left-32 top-80 h-96 w-96 rounded-full bg-amber-200/60 blur-3xl" />
-        <div className="pointer-events-none absolute left-1/2 top-32 h-72 w-72 -translate-x-1/2 rounded-full bg-fuchsia-100 blur-3xl" />
 
         <section className="relative mb-8 overflow-hidden rounded-[2.75rem] border border-white bg-white/80 p-6 shadow-[0_30px_140px_rgba(15,23,42,0.12)] backdrop-blur md:p-10">
           <div className="absolute right-6 top-6 hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-black text-slate-600 md:block">
@@ -361,22 +380,21 @@ export default function HomePage() {
               Пачаць выбар
             </a>
 
-            <button
-              type="button"
-              onClick={fillRandomTo80}
+            <a
+              href="https://rada.vision/"
+              target="_blank"
+              rel="noreferrer"
               className="rounded-2xl border border-slate-200 bg-white px-6 py-4 font-black text-slate-900 transition hover:-translate-y-1 hover:border-blue-300 hover:bg-blue-50 hover:shadow-xl"
             >
-              Я лянівы — дабраць да 80
-            </button>
+              Сайт Каардынацыйнай рады ↗
+            </a>
           </div>
         </section>
 
-        <section className="relative mb-8 overflow-hidden rounded-[2.5rem] bg-slate-950 p-6 text-white shadow-[0_24px_100px_rgba(15,23,42,0.22)] md:p-8">
-          <div className="absolute -right-20 -top-20 h-72 w-72 rounded-full bg-blue-500/30 blur-3xl" />
-
-          <div className="relative mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <section className="relative mb-8 overflow-hidden rounded-[2.5rem] border border-slate-200 bg-white p-6 shadow-[0_18px_70px_rgba(15,23,42,0.08)] md:p-8">
+          <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="mb-2 text-sm font-black uppercase tracking-[0.25em] text-blue-300">
+              <p className="mb-2 text-sm font-black uppercase tracking-[0.25em] text-blue-600">
                 Таймер
               </p>
               <h2 className="text-3xl font-black md:text-5xl">
@@ -384,17 +402,16 @@ export default function HomePage() {
               </h2>
             </div>
 
-            <p className="max-w-xl text-slate-300">
-              Калі вынікі будуць вядомыя, тут з’явіцца табліца лідараў і
-              дашборд.
+            <p className="max-w-xl text-slate-600">
+              Пасля вынікаў тут з’явіцца табліца лідараў і дашборд.
             </p>
           </div>
 
-          <div className="relative grid gap-3 sm:grid-cols-4">
-            <WideTimerBox label="дзён" value={timeLeft.days} />
-            <WideTimerBox label="гадзін" value={timeLeft.hours} />
-            <WideTimerBox label="хвілін" value={timeLeft.minutes} />
-            <WideTimerBox label="секунд" value={timeLeft.seconds} />
+          <div className="grid gap-3 md:grid-cols-4">
+            <TimerTile label="дзён" value={timeLeft.days} />
+            <TimerTile label="гадзін" value={timeLeft.hours} />
+            <TimerTile label="хвілін" value={timeLeft.minutes} />
+            <TimerTile label="секунд" value={timeLeft.seconds} />
           </div>
         </section>
 
@@ -402,80 +419,19 @@ export default function HomePage() {
           <InfoCard
             number="01"
             title="Абярыце спісы"
-            text="Выбар унутры кожнага спісу ідзе паслядоўна: калі абіраеце №12, аўтаматычна абіраюцца №1–12."
+            text="Калі абіраеце №12, аўтаматычна абіраюцца №1–12."
           />
           <InfoCard
             number="02"
             title="Адзначце парог"
-            text="Калі лічыце, што спіс не набярэ больш за 3%, адзначце гэта ўнутры карткі спісу."
+            text="Калі лічыце, што спіс не набярэ больш за 3%, адзначце гэта ўнутры карткі."
           />
           <InfoCard
             number="03"
             title="Адпраўце прагноз"
-            text="Пасля вынікаў атрымаеце балы за дэлегатаў, парог і прагноз агульнай колькасці галасоў."
+            text="Гэта не сапраўдныя выбары, а гульнявы прагноз вынікаў."
           />
         </section>
-
-        <div className="sticky top-3 z-20 mb-6 rounded-[2rem] border border-white bg-white/85 p-4 shadow-[0_18px_70px_rgba(15,23,42,0.16)] backdrop-blur-xl">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-950 text-xl font-black text-white">
-                {selectedIds.length}
-              </div>
-              <div>
-                <p className="text-sm font-bold text-slate-500">
-                  Абрана з {MAX_SELECTED}
-                </p>
-                <p className="font-black text-slate-950">
-                  {MAX_SELECTED - selectedIds.length > 0
-                    ? `Засталося ${MAX_SELECTED - selectedIds.length}`
-                    : "Гатова да адпраўкі"}
-                </p>
-              </div>
-            </div>
-
-            <div className="w-full md:max-w-xl">
-              <div className="h-4 overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-500 via-fuchsia-500 to-slate-950 transition-all duration-700"
-                  style={{ width: `${progressPercent}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={fillRandomTo80}
-                className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-black text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
-              >
-                Дабраць да 80
-              </button>
-
-              <button
-                type="button"
-                onClick={randomizeAll}
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 hover:bg-slate-50"
-              >
-                Рандом
-              </button>
-
-              <button
-                type="button"
-                onClick={clearSelection}
-                className="rounded-2xl border border-slate-200 px-4 py-3 text-sm font-black transition hover:-translate-y-0.5 hover:bg-slate-50"
-              >
-                Скінуць
-              </button>
-            </div>
-          </div>
-
-          {error && (
-            <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-sm font-bold text-red-700">
-              {error}
-            </p>
-          )}
-        </div>
 
         <section id="candidates" className="relative space-y-5 scroll-mt-28">
           <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -488,13 +444,23 @@ export default function HomePage() {
               </h2>
             </div>
 
-            <p className="max-w-xl text-slate-600">
-              Спісы цяпер у фармаце dropdown. Можна выбраць колькасць людзей са
-              спісу або клікнуць па кандыдаце.
-            </p>
+            <div className="flex flex-col gap-3 md:items-end">
+              <p className="max-w-xl text-slate-600">
+                Можна выбраць колькасць людзей са спісу кнопкамі +/−, праз поле
+                або клікнуць па кандыдаце.
+              </p>
+
+              <button
+                type="button"
+                onClick={fillRandomTo80}
+                className="rounded-2xl bg-blue-600 px-5 py-3 font-black text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
+              >
+                Я лянівы — дабраць да 80
+              </button>
+            </div>
           </div>
 
-          {Object.entries(factions).map(([faction, factionCandidates], i) => {
+          {orderedFactionEntries.map(([faction, factionCandidates], i) => {
             const isFailed = failedThresholdFactions.includes(faction);
             const selectedCount = getSelectedCountByFaction(faction);
             const isOpen = openFactions.includes(faction);
@@ -540,6 +506,15 @@ export default function HomePage() {
                   </button>
 
                   <div className="flex flex-wrap items-center gap-3">
+                    <a
+                      href={PROGRAM_LINKS[faction]}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-black text-slate-800 transition hover:-translate-y-0.5 hover:bg-slate-50"
+                    >
+                      Праграма ↗
+                    </a>
+
                     <button
                       type="button"
                       onClick={() => toggleFailedThresholdFaction(faction)}
@@ -553,12 +528,20 @@ export default function HomePage() {
                       {isFailed ? "Не пройдзе 3% ✓" : "Не пераадолее 3%"}
                     </button>
 
-                    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2">
-                      <span className="text-sm font-black text-slate-500">
-                        Колькі:
-                      </span>
+                    <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-2 py-2">
+                      <button
+                        type="button"
+                        disabled={isFailed || selectedCount <= 0}
+                        onClick={() => changeFactionCount(faction, -1)}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-xl font-black transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-40"
+                      >
+                        −
+                      </button>
 
-                      <select
+                      <input
+                        type="number"
+                        min={0}
+                        max={factionCandidates.length}
                         value={selectedCount}
                         disabled={isFailed}
                         onChange={(event) =>
@@ -567,16 +550,21 @@ export default function HomePage() {
                             Number(event.target.value)
                           )
                         }
-                        className="bg-transparent font-black outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                        className="h-9 w-16 rounded-xl border border-slate-200 text-center font-black outline-none disabled:opacity-40"
+                      />
+
+                      <button
+                        type="button"
+                        disabled={
+                          isFailed ||
+                          selectedCount >= factionCandidates.length ||
+                          selectedIds.length >= MAX_SELECTED
+                        }
+                        onClick={() => changeFactionCount(faction, 1)}
+                        className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-950 text-xl font-black text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
                       >
-                        {Array.from({
-                          length: factionCandidates.length + 1,
-                        }).map((_, index) => (
-                          <option key={index} value={index}>
-                            {index}
-                          </option>
-                        ))}
-                      </select>
+                        +
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -663,11 +651,6 @@ export default function HomePage() {
             Колькі ўсяго людзей прагаласуе?
           </h2>
 
-          <p className="mb-5 max-w-3xl leading-7 text-slate-600">
-            Гэта будзе асобны бонусны прагноз. Чым бліжэй да рэальнай лічбы,
-            тым больш дадатковых балаў.
-          </p>
-
           <input
             type="number"
             min="1"
@@ -679,56 +662,190 @@ export default function HomePage() {
         </section>
 
         <section className="relative mt-8 overflow-hidden rounded-[2.5rem] border border-slate-900 bg-slate-950 p-6 text-white shadow-[0_24px_100px_rgba(15,23,42,0.24)] md:p-8">
-          <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-500/30 blur-3xl" />
+          <h2 className="mb-3 text-3xl font-black">Адправіць прагноз</h2>
 
-          <div className="relative">
-            <h2 className="mb-3 text-3xl font-black">Адправіць прагноз</h2>
+          <p className="mb-5 max-w-3xl leading-7 text-slate-300">
+            Абярыце роўна 80 кандыдатаў, увядзіце агульную колькасць галасоў і
+            свой нікнэйм.
+          </p>
 
-            <p className="mb-5 max-w-3xl leading-7 text-slate-300">
-              Абярыце роўна 80 кандыдатаў, увядзіце агульную колькасць галасоў
-              і свой нікнэйм.
-            </p>
+          <div className="flex flex-col gap-3 md:flex-row">
+            <input
+              value={nickname}
+              onChange={(event) => setNickname(event.target.value)}
+              placeholder="Ваш нікнэйм"
+              maxLength={40}
+              className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-slate-950 outline-none transition focus:ring-4 focus:ring-blue-500/30"
+            />
 
-            <div className="flex flex-col gap-3 md:flex-row">
-              <input
-                value={nickname}
-                onChange={(event) => setNickname(event.target.value)}
-                placeholder="Ваш нікнэйм"
-                maxLength={40}
-                className="min-h-14 flex-1 rounded-2xl border border-white/10 bg-white px-4 text-slate-950 outline-none transition focus:ring-4 focus:ring-blue-500/30"
-              />
-
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={selectedIds.length !== MAX_SELECTED || isSubmitting}
-                className="min-h-14 rounded-2xl bg-blue-600 px-7 font-black text-white transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
-              >
-                {isSubmitting ? "Адпраўляем..." : "Адправіць прагноз"}
-              </button>
-            </div>
-
-            {error && (
-              <p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
-                {error}
-              </p>
-            )}
+            <button
+              type="button"
+              onClick={openDisclaimer}
+              disabled={selectedIds.length !== MAX_SELECTED || isSubmitting}
+              className="min-h-14 rounded-2xl bg-blue-600 px-7 font-black text-white transition hover:-translate-y-0.5 hover:bg-blue-500 disabled:cursor-not-allowed disabled:bg-slate-600 disabled:text-slate-300"
+            >
+              {isSubmitting ? "Адпраўляем..." : "Адправіць прагноз"}
+            </button>
           </div>
+
+          {error && (
+            <p className="mt-4 rounded-2xl bg-red-500/10 px-4 py-3 text-sm font-bold text-red-200">
+              {error}
+            </p>
+          )}
         </section>
       </section>
+
+      <FloatingControlBar
+        selectedCount={selectedIds.length}
+        progressPercent={progressPercent}
+        onFillRandom={fillRandomTo80}
+        onRandomizeAll={randomizeAll}
+        onClear={clearSelection}
+      />
+
+      {showDisclaimer && (
+        <DisclaimerModal
+          isSubmitting={isSubmitting}
+          onCancel={() => setShowDisclaimer(false)}
+          onConfirm={handleSubmit}
+        />
+      )}
 
       <GlobalStyles />
     </main>
   );
 }
 
-function WideTimerBox({ label, value }: { label: string; value: number }) {
+function FloatingControlBar({
+  selectedCount,
+  progressPercent,
+  onFillRandom,
+  onRandomizeAll,
+  onClear,
+}: {
+  selectedCount: number;
+  progressPercent: number;
+  onFillRandom: () => void;
+  onRandomizeAll: () => void;
+  onClear: () => void;
+}) {
   return (
-    <div className="rounded-[2rem] bg-white/10 p-5 text-center ring-1 ring-white/10 transition hover:-translate-y-1 hover:bg-white/15">
-      <p className="text-5xl font-black tabular-nums md:text-6xl">
+    <div className="fixed inset-x-3 bottom-3 z-40 mx-auto max-w-5xl rounded-[2rem] border border-slate-950 bg-white/90 p-3 shadow-[0_18px_80px_rgba(15,23,42,0.25)] backdrop-blur-xl md:p-4">
+      <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl border-2 border-slate-950 bg-white text-xl font-black text-slate-950">
+            {selectedCount}
+          </div>
+          <div>
+            <p className="text-sm font-bold text-slate-500">
+              Абрана з {MAX_SELECTED}
+            </p>
+            <p className="font-black">
+              {MAX_SELECTED - selectedCount > 0
+                ? `Засталося ${MAX_SELECTED - selectedCount}`
+                : "Гатова да адпраўкі"}
+            </p>
+          </div>
+        </div>
+
+        <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100 md:max-w-sm">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-blue-500 via-fuchsia-500 to-slate-950 transition-all duration-700"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 md:flex">
+          <button
+            type="button"
+            onClick={onFillRandom}
+            className="rounded-2xl bg-blue-600 px-3 py-3 text-xs font-black text-white transition hover:bg-blue-700 md:text-sm"
+          >
+            Дабраць
+          </button>
+
+          <button
+            type="button"
+            onClick={onRandomizeAll}
+            className="rounded-2xl border border-slate-200 px-3 py-3 text-xs font-black transition hover:bg-slate-50 md:text-sm"
+          >
+            Рандом
+          </button>
+
+          <button
+            type="button"
+            onClick={onClear}
+            className="rounded-2xl border border-slate-200 px-3 py-3 text-xs font-black transition hover:bg-slate-50 md:text-sm"
+          >
+            Скінуць
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function DisclaimerModal({
+  isSubmitting,
+  onCancel,
+  onConfirm,
+}: {
+  isSubmitting: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 p-4 backdrop-blur-sm">
+      <div className="max-w-xl animate-[pop_0.25s_ease-out] rounded-[2rem] bg-white p-6 shadow-[0_30px_120px_rgba(15,23,42,0.35)]">
+        <p className="mb-3 text-sm font-black uppercase tracking-[0.2em] text-blue-600">
+          Важнае ўдакладненне
+        </p>
+
+        <h2 className="mb-4 text-3xl font-black">Гэта не сапраўдныя выбары</h2>
+
+        <p className="mb-4 leading-7 text-slate-600">
+          Гэты сайт — не афіцыйная платформа галасавання і не замяняе ўдзел у
+          выбарах. Гэта толькі гульнявы таталізатар / прагноз на вынікі
+          выбараў у Каардынацыйную раду.
+        </p>
+
+        <p className="mb-6 leading-7 text-slate-600">
+          Сапраўднае галасаванне будзе праходзіць на асобнай афіцыйнай
+          платформе. Адпраўляючы прагноз тут, вы толькі ўдзельнічаеце ў
+          прадказанні вынікаў.
+        </p>
+
+        <div className="flex flex-col gap-3 md:flex-row">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="min-h-12 flex-1 rounded-2xl border border-slate-200 font-black transition hover:bg-slate-50"
+          >
+            Вярнуцца
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="min-h-12 flex-1 rounded-2xl bg-blue-600 font-black text-white transition hover:bg-blue-700 disabled:opacity-60"
+          >
+            {isSubmitting ? "Адпраўляем..." : "Разумею, адправіць"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TimerTile({ label, value }: { label: string; value: number }) {
+  return (
+    <div className="group rounded-[2rem] border border-slate-200 bg-[#fbfaf7] p-5 text-center transition hover:-translate-y-1 hover:border-slate-950 hover:shadow-xl">
+      <p className="text-5xl font-black tabular-nums tracking-tight md:text-6xl">
         {String(value).padStart(2, "0")}
       </p>
-      <p className="mt-2 text-sm font-black uppercase tracking-[0.2em] text-slate-300">
+      <p className="mt-2 text-sm font-black uppercase tracking-[0.2em] text-slate-500 group-hover:text-slate-950">
         {label}
       </p>
     </div>
