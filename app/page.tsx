@@ -9,14 +9,14 @@ const RESULTS_DATE = new Date("2026-05-18T23:59:59+02:00");
 
 const FACTION_ORDER = [
   "Ваш Голас",
-  "Спіс 'Еўрапейскі выбар",
-  "Хватит бояться!",
-  "Рух Воля",
-  "Аб'яднанная Грамадзянская Платформа",
   "Наступ",
-  "ЗАКОН и Правопорядок",
-  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»",
+  "Аб'яднанная Грамадзянская Платформа",
   "Кааліцыя Латушка і Рух “За Свабоду”",
+  "Рух Воля",
+  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»",
+  "Хватит бояться!",
+  "Спіс 'Еўрапейскі выбар",
+  "ЗАКОН и Правопорядок",
 ];
 
 const FACTION_COLORS: Record<string, string> = {
@@ -81,6 +81,7 @@ function shortFactionName(faction: string) {
 }
 
 export default function HomePage() {
+  const [clientId, setClientId] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [failedThresholdFactions, setFailedThresholdFactions] = useState<string[]>([]);
   const [openFactions, setOpenFactions] = useState<string[]>([]);
@@ -93,7 +94,6 @@ export default function HomePage() {
   const [showAutofillModal, setShowAutofillModal] = useState(false);
   const [now, setNow] = useState(new Date());
   const [turnstileToken, setTurnstileToken] = useState("");
-  const [clientId, setClientId] = useState("");
   const [isMobileBarExpanded, setIsMobileBarExpanded] = useState(true);
   const [justReachedMax, setJustReachedMax] = useState(false);
 
@@ -107,10 +107,12 @@ export default function HomePage() {
   useEffect(() => {
     const storageKey = "kr_prediction_client_id";
     const existingClientId = localStorage.getItem(storageKey);
+  
     if (existingClientId) {
       setClientId(existingClientId);
       return;
     }
+  
     const newClientId = crypto.randomUUID();
     localStorage.setItem(storageKey, newClientId);
     setClientId(newClientId);
@@ -542,8 +544,9 @@ export default function HomePage() {
 
             <h1 className="heading-xl mb-4">Дзякуй, {nickname.trim()}!</h1>
 
-            <p className="mb-6 text-white/70">
-            Абярыце 80 кандыдатаў, увядзіце нікнэйм, прагноз колькасці ўдзельнікаў і прайдзіце праверку бяспекі.
+            <p className="mb-6 text-white/75">
+              Абярыце 80 кандыдатаў, увядзіце нікнэйм, прагноз колькасці
+              ўдзельнікаў і прайдзіце праверку бяспекі.
             </p>
 
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
