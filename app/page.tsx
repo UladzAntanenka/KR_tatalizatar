@@ -4,8 +4,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { candidates } from "@/data/candidates";
 import Turnstile from "react-turnstile";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
-
 const MAX_SELECTED = 80;
 const RESULTS_DATE = new Date("2026-05-16T23:59:59+02:00");
 
@@ -27,39 +25,50 @@ const FACTION_COLORS: Record<string, string> = {
   "Хватит бояться!": "#7C3AED",
   "Рух Воля": "#059669",
   "Аб'яднанная Грамадзянская Платформа": "#D97706",
-  "Наступ": "#DC2626",
+  Наступ: "#DC2626",
   "ЗАКОН и Правопорядок": "#0891B2",
   "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»": "#65A30D",
   'Кааліцыя Латушка і Рух "За Свабоду': "#DB2777",
 };
 
 const PROGRAM_LINKS: Record<string, string> = {
-  "Ваш Голас": "https://rada.vision/wp-content/uploads/2026/04/Pragrama_Vash-golas-.pdf",
-  "Спіс 'Еўрапейскі выбар": "https://rada.vision/wp-content/uploads/2026/04/Pragrama_vybarchaga_spisu_E-rapejski_vybar.pdf",
-  "Хватит бояться!": "https://rada.vision/wp-content/uploads/2026/04/Hvatit-Boyatsya.pdf",
-  "Рух Воля": "https://rada.vision/wp-content/uploads/2026/04/Pragrama_Volia.pdf/",
-  "Аб'яднанная Грамадзянская Платформа": "https://rada.vision/wp-content/uploads/2026/04/Palitychnaya-pragrama-spisu-AGP-.pdf",
-  "Наступ": "https://rada.vision/wp-content/uploads/2026/04/Nastup.pdf",
-  "ЗАКОН и Правопорядок": "https://rada.vision/wp-content/uploads/2026/04/Programma-ODZP-.pdf",
-  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»": "https://rada.vision/wp-content/uploads/2026/04/Belarusy-dzeyannya.pdf",
-  'Кааліцыя Латушка і Рух "За Свабоду': "https://rada.vision/wp-content/uploads/2026/04/PRAGRAMA-LRZS-.pdf",
+  "Ваш Голас":
+    "https://rada.vision/wp-content/uploads/2026/04/Pragrama_Vash-golas-.pdf",
+  "Спіс 'Еўрапейскі выбар":
+    "https://rada.vision/wp-content/uploads/2026/04/Pragrama_vybarchaga_spisu_E-rapejski_vybar.pdf",
+  "Хватит бояться!":
+    "https://rada.vision/wp-content/uploads/2026/04/Hvatit-Boyatsya.pdf",
+  "Рух Воля":
+    "https://rada.vision/wp-content/uploads/2026/04/Pragrama_Volia.pdf/",
+  "Аб'яднанная Грамадзянская Платформа":
+    "https://rada.vision/wp-content/uploads/2026/04/Palitychnaya-pragrama-spisu-AGP-.pdf",
+  Наступ: "https://rada.vision/wp-content/uploads/2026/04/Nastup.pdf",
+  "ЗАКОН и Правопорядок":
+    "https://rada.vision/wp-content/uploads/2026/04/Programma-ODZP-.pdf",
+  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»":
+    "https://rada.vision/wp-content/uploads/2026/04/Belarusy-dzeyannya.pdf",
+  'Кааліцыя Латушка і Рух "За Свабоду':
+    "https://rada.vision/wp-content/uploads/2026/04/PRAGRAMA-LRZS-.pdf",
 };
 
-type RandomMode = "balanced" | "proportional" | "risky" | "conservative";
+function getFactionColor(faction: string) {
+  if (FACTION_COLORS[faction]) return FACTION_COLORS[faction];
+  if (faction.includes("Латушка")) return "#DB2777";
+  if (faction.includes("Еўрапейскі")) return "#2455C3";
+  if (faction.includes("Хватит")) return "#7C3AED";
+  if (faction.includes("Грамадзянская")) return "#D97706";
+  if (faction.includes("ЗАКОН")) return "#0891B2";
+  if (faction.includes("зьняволеных")) return "#65A30D";
+  return "#888";
+}
 
-const RANDOM_MODE_LABELS: Record<RandomMode, string> = {
-  balanced: "Раўнамерна",
-  proportional: "Прапарцыйна",
-  risky: "Рызыкоўна",
-  conservative: "Кансерватыўна",
-};
-
-const RANDOM_MODE_TOOLTIPS: Record<RandomMode, string> = {
-  balanced: "Роўна размяркоўвае 80 месцаў паміж усімі спісамі",
-  proportional: "Прапарцыйна памеру кожнага спіса",
-  risky: "Выпадковы разброс — нейкія спісы атрымаюць многа, нейкія мала",
-  conservative: "Канцэнтруе выбар на найбуйнейшых спісах",
-};
+function getProgramLink(faction: string) {
+  if (PROGRAM_LINKS[faction]) return PROGRAM_LINKS[faction];
+  if (faction.includes("Латушка")) {
+    return "https://rada.vision/wp-content/uploads/2026/04/PRAGRAMA-LRZS-.pdf";
+  }
+  return "#";
+}
 
 function shortFactionName(faction: string) {
   if (faction.includes("Еўрапейскі")) return "Еўравыбар";
@@ -71,13 +80,12 @@ function shortFactionName(faction: string) {
   return faction;
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-
 export default function HomePage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [failedThresholdFactions, setFailedThresholdFactions] = useState<string[]>([]);
+  const [failedThresholdFactions, setFailedThresholdFactions] = useState<
+    string[]
+  >([]);
   const [openFactions, setOpenFactions] = useState<string[]>([]);
-  const [randomMode, setRandomMode] = useState<RandomMode>("balanced");
   const [predictedTotalVotes, setPredictedTotalVotes] = useState("");
   const [nickname, setNickname] = useState("");
   const [error, setError] = useState("");
@@ -85,65 +93,101 @@ export default function HomePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [now, setNow] = useState(new Date());
-  const [shareCopied, setShareCopied] = useState(false);
   const [turnstileToken, setTurnstileToken] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showSearch, setShowSearch] = useState(false);
+  const [clientId, setClientId] = useState("");
   const [isMobileBarExpanded, setIsMobileBarExpanded] = useState(true);
   const [justReachedMax, setJustReachedMax] = useState(false);
 
   const prevSelectedCount = useRef(0);
-  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const storageKey = "kr_prediction_client_id";
+    const existingClientId = localStorage.getItem(storageKey);
+
+    if (existingClientId) {
+      setClientId(existingClientId);
+      return;
+    }
+
+    const newClientId = crypto.randomUUID();
+    localStorage.setItem(storageKey, newClientId);
+    setClientId(newClientId);
+  }, []);
+
   const factions = useMemo(() => {
     const grouped: Record<string, typeof candidates> = {};
+
     for (const candidate of candidates) {
       if (!grouped[candidate.faction]) grouped[candidate.faction] = [];
       grouped[candidate.faction].push(candidate);
     }
+
     return grouped;
   }, []);
 
   const orderedFactionEntries = useMemo(() => {
-    return FACTION_ORDER.filter((faction) => factions[faction]).map(
-      (faction) => [faction, factions[faction]] as const
-    );
+    const used = new Set<string>();
+    const ordered: [string, typeof candidates][] = [];
+
+    for (const orderName of FACTION_ORDER) {
+      const exactFaction = Object.keys(factions).find(
+        (faction) =>
+          faction === orderName ||
+          faction.includes(orderName) ||
+          orderName.includes(faction) ||
+          (orderName.includes("Латушка") && faction.includes("Латушка"))
+      );
+
+      if (exactFaction && !used.has(exactFaction)) {
+        ordered.push([exactFaction, factions[exactFaction]]);
+        used.add(exactFaction);
+      }
+    }
+
+    for (const faction of Object.keys(factions)) {
+      if (!used.has(faction)) {
+        ordered.push([faction, factions[faction]]);
+      }
+    }
+
+    return ordered;
   }, [factions]);
 
   useEffect(() => {
-    setOpenFactions(FACTION_ORDER.filter((faction) => factions[faction]));
-  }, [factions]);
+    setOpenFactions(orderedFactionEntries.map(([faction]) => faction));
+  }, [orderedFactionEntries]);
 
-  // O(1) lookup map - avoids repeated array scans
   const selectedCountByFaction = useMemo(() => {
     const map: Record<string, number> = {};
+
     for (const id of selectedIds) {
       const candidate = candidates.find((c) => c.id === id);
       if (candidate) map[candidate.faction] = (map[candidate.faction] || 0) + 1;
     }
+
     return map;
   }, [selectedIds]);
 
-  // Celebrate reaching exactly 80
   useEffect(() => {
-    if (prevSelectedCount.current !== MAX_SELECTED && selectedIds.length === MAX_SELECTED) {
+    if (
+      prevSelectedCount.current !== MAX_SELECTED &&
+      selectedIds.length === MAX_SELECTED
+    ) {
       setJustReachedMax(true);
       setTimeout(() => setJustReachedMax(false), 2500);
     }
+
     prevSelectedCount.current = selectedIds.length;
   }, [selectedIds.length]);
 
-  useEffect(() => {
-    if (showSearch) searchRef.current?.focus();
-  }, [showSearch]);
-
   const timeLeft = useMemo(() => {
     const diff = Math.max(0, RESULTS_DATE.getTime() - now.getTime());
+
     return {
       days: Math.floor(diff / (1000 * 60 * 60 * 24)),
       hours: Math.floor((diff / (1000 * 60 * 60)) % 24),
@@ -173,19 +217,14 @@ export default function HomePage() {
       total: factionCandidates.length,
       selected: getSelectedCountByFaction(faction),
       failed: failedThresholdFactions.includes(faction),
-      color: FACTION_COLORS[faction] || "#888",
+      color: getFactionColor(faction),
     }));
-  }, [orderedFactionEntries, getSelectedCountByFaction, failedThresholdFactions]);
+  }, [
+    orderedFactionEntries,
+    getSelectedCountByFaction,
+    failedThresholdFactions,
+  ]);
 
-  const filteredFactionEntries = useMemo(() => {
-    if (!searchQuery.trim()) return orderedFactionEntries;
-    const q = searchQuery.toLowerCase();
-    return orderedFactionEntries
-      .map(([faction, fc]) => [faction, fc.filter((c) => c.name.toLowerCase().includes(q))] as const)
-      .filter(([, fc]) => fc.length > 0);
-  }, [orderedFactionEntries, searchQuery]);
-
-  // ─── Actions ──────────────────────────────────────────────────────────────
   const toggleFactionOpen = (faction: string) => {
     setOpenFactions((prev) =>
       prev.includes(faction)
@@ -193,22 +232,30 @@ export default function HomePage() {
         : [...prev, faction]
     );
   };
-  
+
   const selectFactionCount = (faction: string, count: number) => {
     setError("");
+
     if (failedThresholdFactions.includes(faction)) {
       setError("Гэты спіс адзначаны як той, што не пераадолее парог 3%.");
       return;
     }
-    const fc = getFactionCandidates(faction);
-    const safeCount = Math.max(0, Math.min(count, fc.length));
-    const factionIds = fc.map((item) => item.id);
+
+    const factionCandidates = getFactionCandidates(faction);
+    const safeCount = Math.max(0, Math.min(count, factionCandidates.length));
+    const factionIds = factionCandidates.map((item) => item.id);
+
     const otherIds = selectedIds.filter((id) => !factionIds.includes(id));
-    const next = [...otherIds, ...fc.slice(0, safeCount).map((item) => item.id)];
+    const next = [
+      ...otherIds,
+      ...factionCandidates.slice(0, safeCount).map((item) => item.id),
+    ];
+
     if (next.length > MAX_SELECTED) {
       setError("Гэты выбар перавысіць ліміт у 80 кандыдатаў.");
       return;
     }
+
     setSelectedIds(next);
   };
 
@@ -218,169 +265,224 @@ export default function HomePage() {
 
   const toggleCandidate = (candidateId: string) => {
     setError("");
+
     const candidate = candidates.find((item) => item.id === candidateId);
     if (!candidate) return;
+
     if (failedThresholdFactions.includes(candidate.faction)) {
       setError("Гэты спіс адзначаны як той, што не пераадолее парог 3%.");
       return;
     }
-    const fc = getFactionCandidates(candidate.faction);
-    const idx = fc.findIndex((item) => item.id === candidateId);
+
+    const factionCandidates = getFactionCandidates(candidate.faction);
+    const candidateIndex = factionCandidates.findIndex(
+      (item) => item.id === candidateId
+    );
+
     if (selectedIds.includes(candidateId)) {
-      const remove = fc.slice(idx).map((item) => item.id);
+      const remove = factionCandidates
+        .slice(candidateIndex)
+        .map((item) => item.id);
+
       setSelectedIds((prev) => prev.filter((id) => !remove.includes(id)));
     } else {
-      const add = fc.slice(0, idx + 1).map((item) => item.id);
+      const add = factionCandidates
+        .slice(0, candidateIndex + 1)
+        .map((item) => item.id);
+
       const next = Array.from(new Set([...selectedIds, ...add]));
+
       if (next.length > MAX_SELECTED) {
         setError("Гэты выбар перавысіць ліміт у 80 кандыдатаў.");
         return;
       }
+
       setSelectedIds(next);
     }
   };
 
   const toggleFailedThresholdFaction = (faction: string) => {
     setError("");
-    const fc = getFactionCandidates(faction);
-    const fIds = fc.map((item) => item.id);
+
+    const factionCandidates = getFactionCandidates(faction);
+    const factionIds = factionCandidates.map((item) => item.id);
     const isMarked = failedThresholdFactions.includes(faction);
+
     if (isMarked) {
-      setFailedThresholdFactions((prev) => prev.filter((item) => item !== faction));
-      setOpenFactions((prev) => (prev.includes(faction) ? prev : [...prev, faction]));
+      setFailedThresholdFactions((prev) =>
+        prev.filter((item) => item !== faction)
+      );
+      setOpenFactions((prev) =>
+        prev.includes(faction) ? prev : [...prev, faction]
+      );
     } else {
       setFailedThresholdFactions((prev) => [...prev, faction]);
-      setSelectedIds((prev) => prev.filter((id) => !fIds.includes(id)));
+      setSelectedIds((prev) => prev.filter((id) => !factionIds.includes(id)));
       setOpenFactions((prev) => prev.filter((item) => item !== faction));
     }
   };
 
-  const buildRandomCounts = () => {
+  const randomizeEverything = () => {
+    setError("");
+
+    const failedRandom = orderedFactionEntries
+      .filter(() => Math.random() < 0.2)
+      .map(([faction]) => faction);
+
     const available = orderedFactionEntries.filter(
-      ([faction]) => !failedThresholdFactions.includes(faction)
+      ([faction]) => !failedRandom.includes(faction)
     );
+
     const counts: Record<string, number> = {};
-    for (const [f] of available) counts[f] = 0;
+    for (const [faction] of available) counts[faction] = 0;
 
-    if (randomMode === "balanced") {
-      let left = MAX_SELECTED;
-      while (left > 0) {
-        let changed = false;
-        for (const [f, fc] of available) {
-          if (left <= 0) break;
-          if (counts[f] < fc.length) { counts[f]++; left--; changed = true; }
+    let left = MAX_SELECTED;
+
+    while (left > 0) {
+      let changed = false;
+
+      for (const [faction, factionCandidates] of available) {
+        if (left <= 0) break;
+
+        if (counts[faction] < factionCandidates.length && Math.random() > 0.25) {
+          counts[faction]++;
+          left--;
+          changed = true;
         }
-        if (!changed) break;
+      }
+
+      if (!changed) {
+        const possible = available.filter(
+          ([faction, factionCandidates]) =>
+            counts[faction] < factionCandidates.length
+        );
+
+        const randomFaction =
+          possible[Math.floor(Math.random() * possible.length)];
+
+        if (!randomFaction) break;
+
+        counts[randomFaction[0]]++;
+        left--;
       }
     }
 
-    if (randomMode === "proportional") {
-      const total = available.reduce((s, [, fc]) => s + fc.length, 0);
-      let assigned = 0;
-      for (const [f, fc] of available) {
-        const c = Math.min(fc.length, Math.floor((fc.length / total) * MAX_SELECTED));
-        counts[f] = c; assigned += c;
-      }
-      while (assigned < MAX_SELECTED) {
-        const possible = available.filter(([f, fc]) => counts[f] < fc.length);
-        const r = possible[Math.floor(Math.random() * possible.length)];
-        if (!r) break;
-        counts[r[0]]++; assigned++;
-      }
-    }
-
-    if (randomMode === "risky") {
-      let left = MAX_SELECTED;
-      const shuffled = [...available].sort(() => Math.random() - 0.5);
-      for (const [f, fc] of shuffled) {
-        if (left <= 0) break;
-        const max = Math.min(fc.length, left);
-        const min = Math.min(max, Math.max(0, Math.floor(max * 0.45)));
-        const c = Math.floor(Math.random() * (max - min + 1)) + min;
-        counts[f] = c; left -= c;
-      }
-      // Fallback: fill remaining
-      for (const [f, fc] of available) {
-        if (left <= 0) break;
-        const canAdd = Math.min(left, fc.length - (counts[f] || 0));
-        if (canAdd > 0) { counts[f] = (counts[f] || 0) + canAdd; left -= canAdd; }
-      }
-    }
-
-    if (randomMode === "conservative") {
-      const sorted = [...available].sort((a, b) => b[1].length - a[1].length);
-      let left = MAX_SELECTED;
-      for (const [f, fc] of sorted) {
-        if (left <= 0) break;
-        const c = Math.min(fc.length, Math.ceil(left * 0.38));
-        counts[f] = c; left -= c;
-      }
-      // Fallback: fill remaining
-      for (const [f, fc] of available) {
-        if (left <= 0) break;
-        const canAdd = Math.min(left, fc.length - (counts[f] || 0));
-        if (canAdd > 0) { counts[f] = (counts[f] || 0) + canAdd; left -= canAdd; }
-      }
-    }
-
-    return counts;
-  };
-
-  const applyCounts = (counts: Record<string, number>) => {
     const ids: string[] = [];
-    for (const [f] of orderedFactionEntries) {
-      const c = counts[f] || 0;
-      ids.push(...getFactionCandidates(f).slice(0, c).map((cand) => cand.id));
-    }
-    if (ids.length !== MAX_SELECTED) {
-      setError(`Не атрымалася сабраць роўна 80 (атрымалася ${ids.length}). Паспрабуйце іншы рэжым.`);
-      return;
-    }
-    setSelectedIds(ids);
-  };
 
-  const randomizeAll = () => { setError(""); applyCounts(buildRandomCounts()); };
+    for (const [faction] of orderedFactionEntries) {
+      const count = counts[faction] || 0;
+      ids.push(
+        ...getFactionCandidates(faction)
+          .slice(0, count)
+          .map((candidate) => candidate.id)
+      );
+    }
+
+    const randomVotes = Math.floor(Math.random() * (35000 - 3000 + 1)) + 3000;
+
+    setFailedThresholdFactions(failedRandom);
+    setSelectedIds(ids);
+    setPredictedTotalVotes(String(randomVotes));
+    setOpenFactions(
+      orderedFactionEntries
+        .map(([faction]) => faction)
+        .filter((faction) => !failedRandom.includes(faction))
+    );
+  };
 
   const fillRandomTo80 = () => {
     setError("");
+
     const selected = new Set(selectedIds);
-    const avail = Object.keys(factions).filter((f) => !failedThresholdFactions.includes(f));
+    const availableFactions = Object.keys(factions).filter(
+      (faction) => !failedThresholdFactions.includes(faction)
+    );
+
     let attempts = 0;
+
     while (selected.size < MAX_SELECTED && attempts < 10000) {
       attempts++;
-      const rF = avail[Math.floor(Math.random() * avail.length)];
-      const fc = getFactionCandidates(rF);
-      const rC = fc[Math.floor(Math.random() * fc.length)];
-      const toAdd = fc.filter((item) => item.listNumber <= rC.listNumber).map((item) => item.id);
+
+      const randomFaction =
+        availableFactions[Math.floor(Math.random() * availableFactions.length)];
+
+      const factionCandidates = getFactionCandidates(randomFaction);
+      const randomCandidate =
+        factionCandidates[Math.floor(Math.random() * factionCandidates.length)];
+
+      const toAdd = factionCandidates
+        .filter((item) => item.listNumber <= randomCandidate.listNumber)
+        .map((item) => item.id);
+
       const next = new Set([...selected, ...toAdd]);
-      if (next.size <= MAX_SELECTED) toAdd.forEach((id) => selected.add(id));
+
+      if (next.size <= MAX_SELECTED) {
+        toAdd.forEach((id) => selected.add(id));
+      }
     }
+
     if (selected.size !== MAX_SELECTED) {
       setError("Не атрымалася дабраць да 80. Паспрабуйце змяніць выбар.");
       return;
     }
+
+    if (!predictedTotalVotes) {
+      const randomVotes = Math.floor(Math.random() * (35000 - 3000 + 1)) + 3000;
+      setPredictedTotalVotes(String(randomVotes));
+    }
+
     setSelectedIds(Array.from(selected));
   };
 
-  const clearSelection = () => { setSelectedIds([]); setError(""); };
+  const clearSelection = () => {
+    setSelectedIds([]);
+    setFailedThresholdFactions([]);
+    setPredictedTotalVotes("");
+    setError("");
+  };
 
   const validateBeforeSubmit = () => {
     setError("");
-    if (selectedIds.length !== MAX_SELECTED) { setError("Трэба выбраць роўна 80 кандыдатаў."); return false; }
-    if (!nickname.trim()) { setError("Увядзіце нікнэйм."); return false; }
-    if (!predictedTotalVotes || Number(predictedTotalVotes) <= 0) {
-      setError("Увядзіце прагноз агульнай колькасці галасоў."); return false;
+
+    if (selectedIds.length !== MAX_SELECTED) {
+      setError("Трэба выбраць роўна 80 кандыдатаў.");
+      return false;
     }
-    if (!turnstileToken) { setError("Прайдзіце праверку бяспекі."); return false; }
+
+    if (!nickname.trim()) {
+      setError("Увядзіце нікнэйм.");
+      return false;
+    }
+
+    if (!predictedTotalVotes || Number(predictedTotalVotes) <= 0) {
+      setError("Увядзіце прагноз агульнай колькасці галасоў.");
+      return false;
+    }
+
+    if (!clientId) {
+      setError("Не атрымалася вызначыць прыладу. Абнавіце старонку.");
+      return false;
+    }
+
+    if (!turnstileToken) {
+      setError("Прайдзіце праверку бяспекі.");
+      return false;
+    }
+
     return true;
   };
 
-  const openSummary = () => { if (!validateBeforeSubmit()) return; setShowSummary(true); };
+  const openSummary = () => {
+    if (!validateBeforeSubmit()) return;
+    setShowSummary(true);
+  };
 
   const handleSubmit = async () => {
     if (!validateBeforeSubmit()) return;
+
     try {
       setIsSubmitting(true);
+
       const response = await fetch("/api/predictions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -390,14 +492,18 @@ export default function HomePage() {
           failedThresholdFactions,
           predictedTotalVotes: Number(predictedTotalVotes),
           turnstileToken,
+          clientId,
         }),
       });
+
       const data = await response.json();
+
       if (!response.ok) {
         setError(data.error || "Не атрымалася адправіць прагноз.");
         setShowSummary(false);
         return;
       }
+
       setSubmitted(true);
       setShowSummary(false);
     } catch {
@@ -408,16 +514,6 @@ export default function HomePage() {
     }
   };
 
-  const shareText = `Я зрабіў прагноз на выбары ў Каардынацыйную раду.\n\nМой нік: ${nickname.trim()}\nАбраў 80 дэлегатаў і паспрабаваў адгадаць вынікі.\n\nДалучайся і зрабі свой прагноз!`;
-
-  const copyShareText = async () => {
-    await navigator.clipboard.writeText(shareText);
-    setShareCopied(true);
-    setTimeout(() => setShareCopied(false), 1800);
-  };
-
-  // ─── Success Screen ────────────────────────────────────────────────────────
-
   if (submitted) {
     return (
       <main className="min-h-screen bg-[var(--bg)] px-4 py-16 text-[var(--ink)]">
@@ -426,76 +522,51 @@ export default function HomePage() {
             <div className="mb-6 inline-flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-500 text-3xl text-white">
               ✓
             </div>
+
             <p className="label-tag mb-3">Прагноз адпраўлены</p>
+
             <h1 className="heading-xl mb-4">Дзякуй, {nickname.trim()}!</h1>
-            <p className="body-text mb-8 text-[var(--ink-2)]">
+
+            <p className="body-text mb-6 text-[var(--ink-2)]">
               Ваш прагноз захаваны. Пасля абвяшчэння вынікаў мы апублікуем
               табліцу лідараў і статыстыку выбару.
             </p>
-            <div className="rounded-2xl bg-[var(--bg)] p-5">
-              <p className="label-tag mb-2 text-[var(--accent)]">Падзяліцца</p>
-              <p className="body-text mb-4 whitespace-pre-line text-[var(--ink-2)]">{shareText}</p>
-              <button
-                type="button"
-                onClick={copyShareText}
-                className="btn-primary"
+
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
+              <p className="mb-2 font-black text-[var(--ink)]">
+                Важна пра сапраўднае галасаванне
+              </p>
+              <p className="body-text text-[var(--ink-2)]">
+                Гэты сайт — толькі гульнявы прагноз і не з’яўляецца афіцыйнай
+                платформай галасавання. Сачыце за інфармацыяй пра тое, калі і
+                як прагаласаваць, на афіцыйных рэсурсах Каардынацыйнай рады.
+              </p>
+
+              <a
+                href="https://rada.vision/"
+                target="_blank"
+                rel="noreferrer"
+                className="btn-primary mt-4"
               >
-                {shareCopied ? "Скапіявана ✓" : "Скапіяваць тэкст для Telegram"}
-              </button>
+                Сайт Каардынацыйнай рады ↗
+              </a>
             </div>
           </div>
         </div>
+
         <GlobalStyles />
       </main>
     );
   }
 
-  // ─── Main UI ───────────────────────────────────────────────────────────────
-
   return (
     <main className="min-h-screen overflow-hidden bg-[var(--bg)] pb-40 text-[var(--ink)]">
       <div className="noise-overlay" />
 
-      {/* Search overlay */}
-      {showSearch && (
-        <div
-          className="fixed inset-0 z-50 flex items-start justify-center bg-[var(--ink)]/60 px-4 pt-20 backdrop-blur-sm"
-          onClick={(e) => { if (e.target === e.currentTarget) { setShowSearch(false); setSearchQuery(""); } }}
-        >
-          <div className="animate-pop w-full max-w-2xl rounded-2xl bg-white p-4 shadow-2xl">
-            <div className="flex items-center gap-3">
-              <span className="text-xl text-[var(--ink-3)]">🔍</span>
-              <input
-                ref={searchRef}
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Пошук па імені кандыдата..."
-                className="flex-1 bg-transparent text-lg font-medium outline-none placeholder:text-[var(--ink-3)]"
-              />
-              <button
-                type="button"
-                onClick={() => { setShowSearch(false); setSearchQuery(""); }}
-                className="text-sm font-bold text-[var(--ink-2)] hover:text-[var(--ink)]"
-              >
-                ESC
-              </button>
-            </div>
-            {searchQuery && (
-              <p className="mt-2 text-sm text-[var(--ink-3)]">
-                Знойдзена:{" "}
-                {filteredFactionEntries.reduce((acc, [, fc]) => acc + fc.length, 0)} кандыдатаў
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
       <div className="mx-auto max-w-7xl px-4 py-8 md:py-12">
-
-        {/* ── Hero ── */}
         <section className="hero-card relative mb-8 overflow-hidden rounded-[2.5rem] p-7 md:p-12">
           <div className="hero-grid-bg absolute inset-0" />
+
           <div className="relative z-10">
             <div className="mb-5 flex flex-wrap items-center gap-3">
               <span className="pill-badge animate-float">
@@ -507,26 +578,20 @@ export default function HomePage() {
             </div>
 
             <h1 className="heading-hero mb-5">
-              Збярыце свой<br />
+              Збярыце свой
+              <br />
               <em className="accent-text not-italic">прагноз</em> на выбары
             </h1>
 
             <p className="body-text max-w-2xl text-[var(--ink-2)] md:text-xl">
-              Абярыце 80 дэлегатаў, адзначце спісы якія не пераадолеюць 3%
-              і паспрабуйце адгадаць агульную колькасць галасоў.
+              Абярыце 80 дэлегатаў, адзначце спісы якія не пераадолеюць 3% і
+              паспрабуйце адгадаць агульную колькасць галасоў.
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">
               <a href="#candidates" className="btn-primary">
                 Пачаць выбар ↓
               </a>
-              <button
-                type="button"
-                onClick={() => setShowSearch(true)}
-                className="btn-secondary"
-              >
-                🔍 Пошук кандыдата
-              </button>
               <a
                 href="https://rada.vision/"
                 target="_blank"
@@ -539,7 +604,6 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── Timer ── */}
         <section className="card mb-8 p-6 md:p-8">
           <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
             <div>
@@ -550,6 +614,7 @@ export default function HomePage() {
               16 мая 2026 — публікацыя табліцы лідараў
             </p>
           </div>
+
           <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
             <TimerTile label="дзён" value={timeLeft.days} />
             <TimerTile label="гадзін" value={timeLeft.hours} />
@@ -558,313 +623,330 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* ── Info cards ── */}
         <section className="mb-8 grid gap-4 md:grid-cols-3">
-          <InfoCard number="01" title="Абярыце спісы"
-            text="Калі абіраеце №12 — аўтаматычна абіраюцца №1–12. Вы выбіраеце мяжу." />
-          <InfoCard number="02" title="Адзначце парог"
-            text="Калі лічыце, што спіс не набярэ больш за 3%, пазначце яго — каб кандыдаты не ўлічваліся." />
-          <InfoCard number="03" title="Адпраўце прагноз"
-            text="Гэта не сапраўдныя выбары — толькі гульнявы прагноз вынікаў." />
+          <InfoCard
+            number="01"
+            title="Абярыце спісы"
+            text="Калі абіраеце №12 — аўтаматычна абіраюцца №1–12. Вы выбіраеце мяжу."
+          />
+          <InfoCard
+            number="02"
+            title="Адзначце парог"
+            text="Калі лічыце, што спіс не набярэ больш за 3%, пазначце яго."
+          />
+          <InfoCard
+            number="03"
+            title="Адпраўце прагноз"
+            text="Гэта не сапраўдныя выбары — толькі гульнявы прагноз вынікаў."
+          />
         </section>
 
-        {/* ── Candidates ── */}
         <section id="candidates" className="scroll-mt-32 space-y-4">
           <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
             <div>
-              <p className="label-tag mb-1.5 text-[var(--accent)]">Спісы і кандыдаты</p>
+              <p className="label-tag mb-1.5 text-[var(--accent)]">
+                Спісы і кандыдаты
+              </p>
               <h2 className="heading-lg">Абярыце сваіх 80</h2>
             </div>
 
-            <div className="flex flex-col gap-3 md:items-end">
-              {/* Random mode pills with tooltips */}
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(RANDOM_MODE_LABELS) as RandomMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setRandomMode(mode)}
-                    data-tooltip={RANDOM_MODE_TOOLTIPS[mode]}
-                    className={[
-                      "tooltip-btn rounded-xl px-3.5 py-2 text-sm font-bold transition-all duration-200",
-                      randomMode === mode
-                        ? "bg-[var(--ink)] text-white shadow-lg shadow-[var(--ink)]/20"
-                        : "border border-[var(--border)] bg-white text-[var(--ink-2)] hover:border-[var(--ink)] hover:text-[var(--ink)]",
-                    ].join(" ")}
-                  >
-                    {RANDOM_MODE_LABELS[mode]}
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={fillRandomTo80} className="btn-accent">
-                  Дабраць да 80
-                </button>
-                <button type="button" onClick={randomizeAll} className="btn-secondary">
-                  Рандом па рэжыме
-                </button>
-                <button type="button" onClick={() => setShowSearch(true)} className="btn-ghost">
-                  🔍 Пошук
-                </button>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={fillRandomTo80}
+                className="btn-accent"
+              >
+                Дабраць да 80
+              </button>
+              <button
+                type="button"
+                onClick={randomizeEverything}
+                className="btn-secondary"
+              >
+                Рандом
+              </button>
             </div>
           </div>
 
-          {/* Search active banner */}
-          {searchQuery && (
-            <div className="flex items-center justify-between rounded-2xl border border-[var(--accent)]/20 bg-[var(--accent)]/5 px-4 py-3">
-              <p className="text-sm font-bold text-[var(--accent)]">
-                Пошук: «{searchQuery}» —{" "}
-                {filteredFactionEntries.reduce((acc, [, fc]) => acc + fc.length, 0)} кандыдатаў
-              </p>
-              <button
-                type="button"
-                onClick={() => setSearchQuery("")}
-                className="text-sm font-bold text-[var(--ink-2)] hover:text-[var(--ink)]"
-              >
-                Скінуць ×
-              </button>
-            </div>
-          )}
+          {orderedFactionEntries.map(([faction, factionCandidates], i) => {
+            const isFailed = failedThresholdFactions.includes(faction);
+            const selectedCount = getSelectedCountByFaction(faction);
+            const isOpen = openFactions.includes(faction);
+            const factionColor = getFactionColor(faction);
+            const pct = Math.round(
+              (selectedCount / factionCandidates.length) * 100
+            );
 
-          {(searchQuery ? filteredFactionEntries : orderedFactionEntries).map(
-            ([faction, factionCandidates], i) => {
-              const isFailed = failedThresholdFactions.includes(faction);
-              const selectedCount = getSelectedCountByFaction(faction);
-              const isOpen = openFactions.includes(faction);
-              const factionColor = FACTION_COLORS[faction] || "#888";
-              const pct = Math.round((selectedCount / factionCandidates.length) * 100);
-
-              return (
-                <section
-                  key={faction}
-                  className={[
-                    "faction-card overflow-hidden rounded-3xl border transition-all duration-300",
-                    isFailed
-                      ? "border-red-200/60 bg-red-50/40"
-                      : "border-[var(--border)] bg-white",
-                  ].join(" ")}
-                  style={{
+            return (
+              <section
+                key={faction}
+                className={[
+                  "faction-card overflow-hidden rounded-3xl border transition-all duration-300",
+                  isFailed
+                    ? "border-red-200/60 bg-red-50/40"
+                    : "border-[var(--border)] bg-white",
+                ].join(" ")}
+                style={
+                  {
                     animationDelay: `${i * 40}ms`,
                     "--faction-color": factionColor,
-                  } as React.CSSProperties}
-                >
-                  {/* Left accent strip */}
-                  <div
-                    className="faction-accent-strip"
-                    style={{
-                      background: isFailed
-                        ? "#ef4444"
-                        : `linear-gradient(to bottom, ${factionColor}, ${factionColor}88)`,
-                    }}
-                  />
+                  } as React.CSSProperties
+                }
+              >
+                <div
+                  className="faction-accent-strip"
+                  style={{
+                    background: isFailed
+                      ? "#ef4444"
+                      : `linear-gradient(to bottom, ${factionColor}, ${factionColor}88)`,
+                  }}
+                />
 
-                  <div className="ml-1 flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:p-5">
+                <div className="ml-1 flex flex-col gap-4 p-4 md:flex-row md:items-center md:justify-between md:p-5">
+                  <button
+                    type="button"
+                    onClick={() => toggleFactionOpen(faction)}
+                    className="flex flex-1 items-center gap-4 text-left"
+                  >
+                    <div
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-black text-white transition"
+                      style={{
+                        background: isFailed ? "#ef4444" : factionColor,
+                      }}
+                    >
+                      {isOpen ? "−" : "+"}
+                    </div>
+
+                    <div className="min-w-0 flex-1">
+                      <h3 className="heading-sm truncate">{faction}</h3>
+
+                      <div className="mt-1.5 flex items-center gap-2">
+                        <div className="h-1.5 max-w-[120px] flex-1 overflow-hidden rounded-full bg-[var(--bg)]">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${pct}%`,
+                              background: isFailed ? "#ef4444" : factionColor,
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs font-semibold text-[var(--ink-3)]">
+                          {selectedCount}/{factionCandidates.length}
+                          {isFailed ? " · не пройдзе 3%" : ""}
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <a
+                      href={getProgramLink(faction)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--ink-2)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
+                    >
+                      Праграма ↗
+                    </a>
+
                     <button
                       type="button"
-                      onClick={() => toggleFactionOpen(faction)}
-                      className="flex flex-1 items-center gap-4 text-left"
+                      onClick={() => toggleFailedThresholdFaction(faction)}
+                      className={[
+                        "rounded-xl px-3.5 py-2.5 text-xs font-bold transition",
+                        isFailed
+                          ? "bg-red-500 text-white hover:bg-red-600"
+                          : "border border-red-200 bg-white text-red-600 hover:bg-red-50",
+                      ].join(" ")}
                     >
-                      <div
-                        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-lg font-black text-white transition"
-                        style={{ background: isFailed ? "#ef4444" : factionColor }}
-                      >
-                        {isOpen ? "−" : "+"}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <h3 className="heading-sm truncate">{faction}</h3>
-
-                        {/* Inline progress bar */}
-                        <div className="mt-1.5 flex items-center gap-2">
-                          <div className="h-1.5 flex-1 max-w-[120px] overflow-hidden rounded-full bg-[var(--bg)]">
-                            <div
-                              className="h-full rounded-full transition-all duration-500"
-                              style={{
-                                width: `${pct}%`,
-                                background: isFailed ? "#ef4444" : factionColor,
-                              }}
-                            />
-                          </div>
-                          <p className="text-xs font-semibold text-[var(--ink-3)]">
-                            {selectedCount}/{factionCandidates.length}
-                            {isFailed ? " · не пройдзе 3%" : ""}
-                          </p>
-                        </div>
-                      </div>
+                      {isFailed ? "≤3% ✓" : "Не пройдзе 3%"}
                     </button>
 
-                    <div className="flex flex-wrap items-center gap-2">
-                      <a
-                        href={PROGRAM_LINKS[faction]}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="rounded-xl border border-[var(--border)] bg-[var(--bg)] px-3.5 py-2.5 text-xs font-bold text-[var(--ink-2)] transition hover:border-[var(--ink)] hover:text-[var(--ink)]"
+                    <div className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5">
+                      <button
+                        type="button"
+                        disabled={isFailed || selectedCount <= 0}
+                        onClick={() => changeFactionCount(faction, -1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-base font-black transition hover:bg-[var(--border)] disabled:cursor-not-allowed disabled:opacity-30"
                       >
-                        Праграма ↗
-                      </a>
+                        −
+                      </button>
+
+                      <input
+                        type="number"
+                        min={0}
+                        max={factionCandidates.length}
+                        value={selectedCount}
+                        disabled={isFailed}
+                        onChange={(event) =>
+                          selectFactionCount(faction, Number(event.target.value))
+                        }
+                        className="h-8 w-14 rounded-lg border border-[var(--border)] bg-white text-center text-sm font-black outline-none disabled:opacity-30"
+                      />
 
                       <button
                         type="button"
-                        onClick={() => toggleFailedThresholdFaction(faction)}
-                        className={[
-                          "rounded-xl px-3.5 py-2.5 text-xs font-bold transition",
-                          isFailed
-                            ? "bg-red-500 text-white hover:bg-red-600"
-                            : "border border-red-200 bg-white text-red-600 hover:bg-red-50",
-                        ].join(" ")}
+                        disabled={
+                          isFailed ||
+                          selectedCount >= factionCandidates.length ||
+                          selectedIds.length >= MAX_SELECTED
+                        }
+                        onClick={() => changeFactionCount(faction, 1)}
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-30"
+                        style={{ background: isFailed ? "#ccc" : factionColor }}
                       >
-                        {isFailed ? "≤3% ✓" : "Не пройдзе 3%"}
+                        +
                       </button>
-
-                      <div className="flex items-center gap-1.5 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-1.5">
-                        <button
-                          type="button"
-                          disabled={isFailed || selectedCount <= 0}
-                          onClick={() => changeFactionCount(faction, -1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-base font-black transition hover:bg-[var(--border)] disabled:cursor-not-allowed disabled:opacity-30"
-                        >
-                          −
-                        </button>
-                        <input
-                          type="number"
-                          min={0}
-                          max={factionCandidates.length}
-                          value={selectedCount}
-                          disabled={isFailed}
-                          onChange={(e) => selectFactionCount(faction, Number(e.target.value))}
-                          className="h-8 w-14 rounded-lg border border-[var(--border)] bg-white text-center text-sm font-black outline-none disabled:opacity-30"
-                        />
-                        <button
-                          type="button"
-                          disabled={isFailed || selectedCount >= factionCandidates.length || selectedIds.length >= MAX_SELECTED}
-                          onClick={() => changeFactionCount(faction, 1)}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-black text-white transition disabled:cursor-not-allowed disabled:opacity-30"
-                          style={{ background: isFailed ? "#ccc" : factionColor }}
-                        >
-                          +
-                        </button>
-                      </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Candidate grid */}
-                  <div
-                    className={[
-                      "ml-1 grid transition-all duration-500",
-                      isOpen && !isFailed ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
-                    ].join(" ")}
-                  >
-                    <div className="overflow-hidden">
-                      <div className="grid gap-2.5 border-t border-[var(--border)] p-4 sm:grid-cols-2 lg:grid-cols-3 md:p-5">
-                        {factionCandidates.map((candidate) => {
-                          const isSelected = selectedIds.includes(candidate.id);
-                          const isDisabled = isFailed || (!isSelected && selectedIds.length >= MAX_SELECTED);
+                <div
+                  className={[
+                    "ml-1 grid transition-all duration-500",
+                    isOpen && !isFailed
+                      ? "grid-rows-[1fr] opacity-100"
+                      : "grid-rows-[0fr] opacity-0",
+                  ].join(" ")}
+                >
+                  <div className="overflow-hidden">
+                    <div className="grid gap-2.5 border-t border-[var(--border)] p-4 sm:grid-cols-2 lg:grid-cols-3 md:p-5">
+                      {factionCandidates.map((candidate) => {
+                        const isSelected = selectedIds.includes(candidate.id);
+                        const isDisabled =
+                          isFailed ||
+                          (!isSelected && selectedIds.length >= MAX_SELECTED);
 
-                          return (
-                            <button
-                              key={candidate.id}
-                              type="button"
-                              onClick={() => toggleCandidate(candidate.id)}
-                              disabled={isDisabled}
-                              className={[
-                                "candidate-btn group rounded-2xl border p-3.5 text-left transition-all duration-200",
-                                isSelected
-                                  ? "border-transparent shadow-lg"
-                                  : "border-[var(--border)] bg-white hover:-translate-y-0.5 hover:border-[var(--ink)]/20 hover:shadow-md",
-                                isDisabled ? "cursor-not-allowed opacity-30 hover:translate-y-0" : "cursor-pointer",
-                              ].join(" ")}
-                              style={
-                                isSelected
-                                  ? {
-                                      background: `linear-gradient(135deg, ${factionColor}18 0%, ${factionColor}08 100%)`,
-                                      borderColor: factionColor,
-                                      boxShadow: `0 8px 24px ${factionColor}22`,
-                                    }
-                                  : {}
-                              }
-                            >
-                              <div className="flex items-start gap-3">
-                                <span
-                                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black transition-all duration-200"
-                                  style={
-                                    isSelected
-                                      ? { background: factionColor, color: "white" }
-                                      : { background: "var(--bg)", color: "var(--ink-2)" }
+                        return (
+                          <button
+                            key={candidate.id}
+                            type="button"
+                            onClick={() => toggleCandidate(candidate.id)}
+                            disabled={isDisabled}
+                            className={[
+                              "candidate-btn group rounded-2xl border p-3.5 text-left transition-all duration-200",
+                              isSelected
+                                ? "border-transparent shadow-lg"
+                                : "border-[var(--border)] bg-white hover:-translate-y-0.5 hover:border-[var(--ink)]/20 hover:shadow-md",
+                              isDisabled
+                                ? "cursor-not-allowed opacity-30 hover:translate-y-0"
+                                : "cursor-pointer",
+                            ].join(" ")}
+                            style={
+                              isSelected
+                                ? {
+                                    background: `linear-gradient(135deg, ${factionColor}18 0%, ${factionColor}08 100%)`,
+                                    borderColor: factionColor,
+                                    boxShadow: `0 8px 24px ${factionColor}22`,
                                   }
-                                >
-                                  {candidate.listNumber}
-                                </span>
-                                <div>
-                                  <p className="text-sm font-bold leading-5">{candidate.name}</p>
-                                  <p className="mt-0.5 text-xs text-[var(--ink-3)]">{shortFactionName(candidate.faction)}</p>
-                                </div>
+                                : {}
+                            }
+                          >
+                            <div className="flex items-start gap-3">
+                              <span
+                                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-black transition-all duration-200"
+                                style={
+                                  isSelected
+                                    ? {
+                                        background: factionColor,
+                                        color: "white",
+                                      }
+                                    : {
+                                        background: "var(--bg)",
+                                        color: "var(--ink-2)",
+                                      }
+                                }
+                              >
+                                {candidate.listNumber}
+                              </span>
+
+                              <div>
+                                <p className="text-sm font-bold leading-5">
+                                  {candidate.name}
+                                </p>
+                                <p className="mt-0.5 text-xs text-[var(--ink-3)]">
+                                  {shortFactionName(candidate.faction)}
+                                </p>
                               </div>
-                            </button>
-                          );
-                        })}
-                      </div>
+                            </div>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
-                </section>
-              );
-            }
-          )}
+                </div>
+              </section>
+            );
+          })}
         </section>
 
-        {/* ── Total votes prediction ── */}
         <section className="card mt-8 p-6 md:p-8">
-          <p className="label-tag mb-1.5 text-[var(--accent)]">Дадатковы прагноз</p>
+          <p className="label-tag mb-1.5 text-[var(--accent)]">
+            Дадатковы прагноз
+          </p>
           <h2 className="heading-lg mb-1">Колькі ўсяго людзей прагаласуе?</h2>
-          <p className="body-text mb-5 text-[var(--ink-3)]">Ваш прагноз агульнай яўкі ў галасаваннях</p>
+          <p className="body-text mb-5 text-[var(--ink-3)]">
+            Ваш прагноз агульнай яўкі ў галасаваннях
+          </p>
+
           <input
             type="number"
             min="1"
             value={predictedTotalVotes}
-            onChange={(e) => setPredictedTotalVotes(e.target.value)}
+            onChange={(event) => setPredictedTotalVotes(event.target.value)}
             placeholder="Напрыклад: 12000"
             className="votes-input"
           />
         </section>
 
-        {/* ── Submit ── */}
         <section
           id="submit"
           className="submit-card relative mt-8 overflow-hidden rounded-3xl p-6 md:p-8"
         >
           <div className="submit-bg absolute inset-0" />
+
           <div className="relative z-10">
-            <p className="label-tag mb-1.5 text-[var(--accent)]">Адправіць прагноз</p>
-            <h2 className="heading-lg mb-2 text-white">Гатовы адправіць?</h2>
-            <p className="body-text mb-6 text-white/60">
+            <p className="label-tag mb-1.5 text-orange-300">
+              Адправіць прагноз
+            </p>
+            <h2 className="mb-2 font-['Syne'] text-3xl font-black tracking-[-0.02em] text-white md:text-4xl">
+              Гатовы адправіць?
+            </h2>
+            <p className="body-text mb-6 text-white/75">
               Абярыце роўна 80 кандыдатаў, увядзіце нікнэйм і прагноз галасоў.
             </p>
 
             <div className="mb-4 flex flex-col gap-3 md:flex-row">
               <input
                 value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
+                onChange={(event) => setNickname(event.target.value)}
                 placeholder="Ваш нікнэйм"
                 maxLength={40}
                 className="nickname-input flex-1"
               />
+
               <button
                 type="button"
                 onClick={openSummary}
-                disabled={selectedIds.length !== MAX_SELECTED || isSubmitting || !turnstileToken}
+                disabled={
+                  selectedIds.length !== MAX_SELECTED ||
+                  isSubmitting ||
+                  !turnstileToken
+                }
                 className="submit-btn"
               >
                 {isSubmitting ? "Адпраўляем..." : "Праверыць і адправіць →"}
               </button>
             </div>
 
-            <div className="overflow-hidden rounded-2xl bg-white/10 p-4 backdrop-blur">
+            <div className="overflow-hidden rounded-2xl bg-white p-4 backdrop-blur">
               <Turnstile
                 sitekey={process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || ""}
                 onVerify={(token) => setTurnstileToken(token)}
                 onExpire={() => setTurnstileToken("")}
-                onError={() => { setTurnstileToken(""); setError("Не атрымалася загрузіць праверку бяспекі."); }}
+                onError={() => {
+                  setTurnstileToken("");
+                  setError("Не атрымалася загрузіць праверку бяспекі.");
+                }}
               />
             </div>
 
@@ -878,7 +960,6 @@ export default function HomePage() {
         </section>
       </div>
 
-      {/* ── Floating Control Bar ── */}
       <FloatingControlBar
         selectedCount={selectedIds.length}
         progressPercent={progressPercent}
@@ -887,15 +968,15 @@ export default function HomePage() {
         isExpanded={isMobileBarExpanded}
         onToggleExpand={() => setIsMobileBarExpanded((prev) => !prev)}
         onFillRandom={fillRandomTo80}
-        onRandomizeAll={randomizeAll}
+        onRandomizeAll={randomizeEverything}
         onClear={clearSelection}
-        onSearch={() => setShowSearch(true)}
         onSubmitJump={() =>
-          document.getElementById("submit")?.scrollIntoView({ behavior: "smooth", block: "start" })
+          document
+            .getElementById("submit")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" })
         }
       />
 
-      {/* ── Summary Modal ── */}
       {showSummary && (
         <SummaryModal
           nickname={nickname.trim()}
@@ -914,8 +995,6 @@ export default function HomePage() {
   );
 }
 
-// ─── Floating Control Bar ─────────────────────────────────────────────────────
-
 function FloatingControlBar({
   selectedCount,
   progressPercent,
@@ -926,19 +1005,23 @@ function FloatingControlBar({
   onFillRandom,
   onRandomizeAll,
   onClear,
-  onSearch,
   onSubmitJump,
 }: {
   selectedCount: number;
   progressPercent: number;
-  factionSummary: { faction: string; selected: number; total: number; failed: boolean; color: string }[];
+  factionSummary: {
+    faction: string;
+    selected: number;
+    total: number;
+    failed: boolean;
+    color: string;
+  }[];
   justReachedMax: boolean;
   isExpanded: boolean;
   onToggleExpand: () => void;
   onFillRandom: () => void;
   onRandomizeAll: () => void;
   onClear: () => void;
-  onSearch: () => void;
   onSubmitJump: () => void;
 }) {
   const isDone = selectedCount === MAX_SELECTED;
@@ -950,17 +1033,19 @@ function FloatingControlBar({
         justReachedMax ? "ring-4 ring-emerald-400/50" : "",
       ].join(" ")}
     >
-      <div className={["overflow-hidden transition-all duration-300", isExpanded ? "p-3 md:p-4" : "p-3"].join(" ")}>
-
-        {/* Main row */}
+      <div
+        className={[
+          "overflow-hidden transition-all duration-300",
+          isExpanded ? "p-3 md:p-4" : "p-3",
+        ].join(" ")}
+      >
         <div className="flex items-center gap-3">
-          {/* Counter */}
           <div
             className={[
               "flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-2xl transition-all duration-300",
               isDone
                 ? justReachedMax
-                  ? "bg-emerald-500 animate-bounce-subtle"
+                  ? "animate-bounce-subtle bg-emerald-500"
                   : "bg-emerald-500"
                 : "bg-[var(--ink)]",
             ].join(" ")}
@@ -971,7 +1056,6 @@ function FloatingControlBar({
             <span className="text-[9px] font-bold text-white/60">/80</span>
           </div>
 
-          {/* Stacked faction bar */}
           <div className="hidden flex-1 md:block">
             <div className="mb-1.5 flex items-center justify-between">
               <p className="text-xs font-bold text-[var(--ink-3)]">
@@ -979,28 +1063,31 @@ function FloatingControlBar({
                   ? "✓ Гатова да адпраўкі"
                   : `Засталося ${MAX_SELECTED - selectedCount}`}
               </p>
-              <p className="text-xs font-bold text-[var(--ink-3)]">{progressPercent}%</p>
+              <p className="text-xs font-bold text-[var(--ink-3)]">
+                {progressPercent}%
+              </p>
             </div>
+
             <div className="flex h-2.5 overflow-hidden rounded-full bg-[var(--bg)]">
               {factionSummary
-                .filter((f) => f.selected > 0 && !f.failed)
-                .map((f) => (
+                .filter((faction) => faction.selected > 0 && !faction.failed)
+                .map((faction) => (
                   <div
-                    key={f.faction}
+                    key={faction.faction}
                     className="h-full transition-all duration-700"
                     style={{
-                      width: `${(f.selected / MAX_SELECTED) * 100}%`,
-                      background: f.color,
+                      width: `${(faction.selected / MAX_SELECTED) * 100}%`,
+                      background: faction.color,
                     }}
-                    title={`${shortFactionName(f.faction)}: ${f.selected}`}
+                    title={`${shortFactionName(faction.faction)}: ${
+                      faction.selected
+                    }`}
                   />
                 ))}
-              {/* Empty remainder */}
               <div className="h-full flex-1 bg-transparent" />
             </div>
           </div>
 
-          {/* Mobile progress pill */}
           <div className="flex-1 md:hidden">
             <div className="h-2.5 overflow-hidden rounded-full bg-[var(--bg)]">
               <div
@@ -1009,36 +1096,46 @@ function FloatingControlBar({
                   width: `${progressPercent}%`,
                   background: isDone
                     ? "#10b981"
-                    : `linear-gradient(to right, var(--accent), var(--accent-blue))`,
+                    : "linear-gradient(to right, var(--accent), var(--accent-blue))",
                 }}
               />
             </div>
           </div>
 
-          {/* Action buttons */}
           <div className="flex items-center gap-1.5">
-            <button type="button" onClick={onFillRandom}
-              className="hidden rounded-xl bg-[var(--accent-blue)] px-3 py-2.5 text-xs font-bold text-white transition hover:opacity-90 md:block">
+            <button
+              type="button"
+              onClick={onFillRandom}
+              className="hidden rounded-xl bg-[var(--accent-blue)] px-3 py-2.5 text-xs font-bold text-white transition hover:opacity-90 md:block"
+            >
               Дабраць
             </button>
-            <button type="button" onClick={onRandomizeAll}
-              className="hidden rounded-xl border border-[var(--border)] px-3 py-2.5 text-xs font-bold transition hover:bg-[var(--bg)] md:block">
+
+            <button
+              type="button"
+              onClick={onRandomizeAll}
+              className="hidden rounded-xl border border-[var(--border)] px-3 py-2.5 text-xs font-bold transition hover:bg-[var(--bg)] md:block"
+            >
               Рандом
             </button>
-            <button type="button" onClick={onClear}
-              className="hidden rounded-xl border border-[var(--border)] px-3 py-2.5 text-xs font-bold transition hover:bg-[var(--bg)] md:block">
+
+            <button
+              type="button"
+              onClick={onClear}
+              className="hidden rounded-xl border border-[var(--border)] px-3 py-2.5 text-xs font-bold transition hover:bg-[var(--bg)] md:block"
+            >
               Скінуць
             </button>
-            <button type="button" onClick={onSearch}
-              className="rounded-xl border border-[var(--border)] px-3 py-2.5 text-xs font-bold transition hover:bg-[var(--bg)]">
-              🔍
-            </button>
-            <button type="button" onClick={onSubmitJump}
+
+            <button
+              type="button"
+              onClick={onSubmitJump}
               disabled={!isDone}
-              className="rounded-xl bg-[var(--ink)] px-3 py-2.5 text-xs font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-30">
+              className="rounded-xl bg-[var(--ink)] px-3 py-2.5 text-xs font-bold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-30"
+            >
               Адправіць
             </button>
-            {/* Mobile expand toggle */}
+
             <button
               type="button"
               onClick={onToggleExpand}
@@ -1049,25 +1146,32 @@ function FloatingControlBar({
           </div>
         </div>
 
-        {/* Expanded mobile section */}
         {isExpanded && (
           <div className="mt-3 grid grid-cols-3 gap-2 md:hidden">
-            <button type="button" onClick={onFillRandom}
-              className="rounded-xl bg-[var(--accent-blue)] py-2.5 text-xs font-bold text-white">
+            <button
+              type="button"
+              onClick={onFillRandom}
+              className="rounded-xl bg-[var(--accent-blue)] py-2.5 text-xs font-bold text-white"
+            >
               Дабраць
             </button>
-            <button type="button" onClick={onRandomizeAll}
-              className="rounded-xl border border-[var(--border)] py-2.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={onRandomizeAll}
+              className="rounded-xl border border-[var(--border)] py-2.5 text-xs font-bold"
+            >
               Рандом
             </button>
-            <button type="button" onClick={onClear}
-              className="rounded-xl border border-[var(--border)] py-2.5 text-xs font-bold">
+            <button
+              type="button"
+              onClick={onClear}
+              className="rounded-xl border border-[var(--border)] py-2.5 text-xs font-bold"
+            >
               Скінуць
             </button>
           </div>
         )}
 
-        {/* Faction tags row — desktop only */}
         {isExpanded && (
           <div className="mt-3 hidden flex-wrap gap-1.5 md:flex">
             {factionSummary.map((item) => (
@@ -1078,11 +1182,20 @@ function FloatingControlBar({
                   item.failed
                     ? { background: "#fee2e2", color: "#b91c1c" }
                     : item.selected > 0
-                      ? { background: `${item.color}18`, color: item.color, border: `1px solid ${item.color}44` }
-                      : { background: "var(--bg)", color: "var(--ink-3)", border: "1px solid var(--border)" }
+                      ? {
+                          background: `${item.color}18`,
+                          color: item.color,
+                          border: `1px solid ${item.color}44`,
+                        }
+                      : {
+                          background: "var(--bg)",
+                          color: "var(--ink-3)",
+                          border: "1px solid var(--border)",
+                        }
                 }
               >
-                {shortFactionName(item.faction)}: {item.failed ? "3%−" : item.selected}
+                {shortFactionName(item.faction)}:{" "}
+                {item.failed ? "3%−" : item.selected}
               </span>
             ))}
           </div>
@@ -1092,17 +1205,26 @@ function FloatingControlBar({
   );
 }
 
-// ─── Summary Modal ────────────────────────────────────────────────────────────
-
 function SummaryModal({
-  nickname, selectedCount, predictedTotalVotes,
-  factionSummary, failedThresholdFactions, isSubmitting,
-  onCancel, onConfirm,
+  nickname,
+  selectedCount,
+  predictedTotalVotes,
+  factionSummary,
+  failedThresholdFactions,
+  isSubmitting,
+  onCancel,
+  onConfirm,
 }: {
   nickname: string;
   selectedCount: number;
   predictedTotalVotes: string;
-  factionSummary: { faction: string; selected: number; total: number; failed: boolean; color: string }[];
+  factionSummary: {
+    faction: string;
+    selected: number;
+    total: number;
+    failed: boolean;
+    color: string;
+  }[];
   failedThresholdFactions: string[];
   isSubmitting: boolean;
   onCancel: () => void;
@@ -1111,34 +1233,45 @@ function SummaryModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--ink)]/70 p-4 backdrop-blur-sm">
       <div className="animate-pop max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-3xl bg-white p-6 shadow-[0_30px_120px_rgba(0,0,0,0.3)]">
-
-        {/* ⚠ WARNING FIRST */}
         <div className="mb-5 flex gap-3 rounded-2xl border border-red-200 bg-red-50 p-4">
           <span className="mt-0.5 text-lg text-red-500">⚠</span>
           <div>
-            <p className="mb-1 font-black text-red-800">Гэта не сапраўдныя выбары!</p>
+            <p className="mb-1 font-black text-red-800">
+              Гэта не сапраўдныя выбары!
+            </p>
             <p className="text-sm leading-6 text-red-700">
-              Сайт — не афіцыйная платформа галасавання. Гэта толькі гульнявы таталізатар/прагноз.
-              Сапраўднае галасаванне на асобнай афіцыйнай платформе.
+              Сайт — не афіцыйная платформа галасавання. Гэта толькі гульнявы
+              таталізатар / прагноз. Сапраўднае галасаванне будзе праходзіць на
+              асобнай афіцыйнай платформе.
             </p>
           </div>
         </div>
 
-        <p className="label-tag mb-1.5 text-[var(--accent)]">Праверце прагноз</p>
+        <p className="label-tag mb-1.5 text-[var(--accent)]">
+          Праверце прагноз
+        </p>
         <h2 className="heading-lg mb-5">Усё правільна?</h2>
 
         <div className="mb-5 grid gap-3 md:grid-cols-3">
           <SummaryStat label="Нікнэйм" value={nickname} />
           <SummaryStat label="Кандыдатаў" value={`${selectedCount}/80`} />
-          <SummaryStat label="Галасоў (прагноз)" value={Number(predictedTotalVotes).toLocaleString()} />
+          <SummaryStat
+            label="Галасоў"
+            value={Number(predictedTotalVotes).toLocaleString()}
+          />
         </div>
 
         {failedThresholdFactions.length > 0 && (
           <div className="mb-5 rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-4">
-            <h3 className="mb-2 text-sm font-black text-[var(--ink-2)]">Спісы, якія не пераадолеюць 3%</h3>
+            <h3 className="mb-2 text-sm font-black text-[var(--ink-2)]">
+              Спісы, якія не пераадолеюць 3%
+            </h3>
             <div className="flex flex-wrap gap-2">
               {failedThresholdFactions.map((faction) => (
-                <span key={faction} className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700">
+                <span
+                  key={faction}
+                  className="rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700"
+                >
                   {faction}
                 </span>
               ))}
@@ -1147,18 +1280,35 @@ function SummaryModal({
         )}
 
         <div className="mb-5 rounded-2xl border border-[var(--border)] p-4">
-          <h3 className="mb-3 text-sm font-black text-[var(--ink-2)]">Выбар па спісах</h3>
+          <h3 className="mb-3 text-sm font-black text-[var(--ink-2)]">
+            Выбар па спісах
+          </h3>
+
           <div className="grid gap-2 md:grid-cols-2">
             {factionSummary.map((item) => (
               <div
                 key={item.faction}
                 className="flex items-center justify-between rounded-xl px-3 py-2"
-                style={{ background: item.failed ? "#fef2f2" : item.selected > 0 ? `${item.color}0f` : "var(--bg)" }}
+                style={{
+                  background: item.failed
+                    ? "#fef2f2"
+                    : item.selected > 0
+                      ? `${item.color}0f`
+                      : "var(--bg)",
+                }}
               >
-                <span className="text-xs font-semibold text-[var(--ink-2)]">{item.faction}</span>
+                <span className="text-xs font-semibold text-[var(--ink-2)]">
+                  {item.faction}
+                </span>
                 <span
                   className="text-xs font-black"
-                  style={{ color: item.failed ? "#dc2626" : item.selected > 0 ? item.color : "var(--ink-3)" }}
+                  style={{
+                    color: item.failed
+                      ? "#dc2626"
+                      : item.selected > 0
+                        ? item.color
+                        : "var(--ink-3)",
+                  }}
                 >
                   {item.failed ? "≤3%" : item.selected}
                 </span>
@@ -1168,12 +1318,19 @@ function SummaryModal({
         </div>
 
         <div className="flex flex-col gap-3 md:flex-row">
-          <button type="button" onClick={onCancel}
-            className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 font-bold transition hover:bg-[var(--bg)]">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="flex-1 rounded-2xl border border-[var(--border)] py-3.5 font-bold transition hover:bg-[var(--bg)]"
+          >
             ← Вярнуцца
           </button>
-          <button type="button" onClick={onConfirm} disabled={isSubmitting}
-            className="flex-1 rounded-2xl bg-[var(--ink)] py-3.5 font-black text-white transition hover:opacity-90 disabled:opacity-50">
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isSubmitting}
+            className="flex-1 rounded-2xl bg-[var(--ink)] py-3.5 font-black text-white transition hover:opacity-90 disabled:opacity-50"
+          >
             {isSubmitting ? "Адпраўляем..." : "Разумею — адправіць →"}
           </button>
         </div>
@@ -1181,8 +1338,6 @@ function SummaryModal({
     </div>
   );
 }
-
-// ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SummaryStat({ label, value }: { label: string; value: string }) {
   return (
@@ -1206,7 +1361,15 @@ function TimerTile({ label, value }: { label: string; value: number }) {
   );
 }
 
-function InfoCard({ number, title, text }: { number: string; title: string; text: string }) {
+function InfoCard({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
   return (
     <div className="info-card group rounded-[2rem] border border-[var(--border)] bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl">
       <p className="mb-4 inline-flex rounded-xl bg-[var(--ink)] px-3 py-1.5 text-xs font-black text-white transition group-hover:bg-[var(--accent)]">
@@ -1218,33 +1381,32 @@ function InfoCard({ number, title, text }: { number: string; title: string; text
   );
 }
 
-// ─── Global Styles ────────────────────────────────────────────────────────────
-
 function GlobalStyles() {
   return (
     <style jsx global>{`
-      @import url('https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+      @import url("https://fonts.googleapis.com/css2?family=Syne:wght@600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap");
 
       :root {
-        --bg: #F4F1EA;
-        --surface: #FEFDFB;
-        --ink: #0E0C08;
-        --ink-2: #5C5448;
-        --ink-3: #A89F95;
-        --border: #E6E0D8;
-        --accent: #E8420A;
-        --accent-blue: #2455C3;
+        --bg: #f4f1ea;
+        --surface: #fefdfb;
+        --ink: #0e0c08;
+        --ink-2: #5c5448;
+        --ink-3: #a89f95;
+        --border: #e6e0d8;
+        --accent: #e8420a;
+        --accent-blue: #2455c3;
         --accent-green: #059669;
       }
 
-      html { scroll-behavior: smooth; }
+      html {
+        scroll-behavior: smooth;
+      }
 
       body {
-        font-family: 'DM Sans', system-ui, sans-serif;
+        font-family: "DM Sans", system-ui, sans-serif;
         -webkit-font-smoothing: antialiased;
       }
 
-      /* Noise overlay */
       .noise-overlay {
         position: fixed;
         inset: 0;
@@ -1256,9 +1418,8 @@ function GlobalStyles() {
         background-size: 200px 200px;
       }
 
-      /* Typography */
       .heading-hero {
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         font-size: clamp(2.5rem, 7vw, 5.5rem);
         font-weight: 800;
         line-height: 0.95;
@@ -1267,7 +1428,7 @@ function GlobalStyles() {
       }
 
       .heading-xl {
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         font-size: clamp(1.75rem, 4vw, 2.75rem);
         font-weight: 800;
         letter-spacing: -0.025em;
@@ -1275,7 +1436,7 @@ function GlobalStyles() {
       }
 
       .heading-lg {
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         font-size: clamp(1.5rem, 3vw, 2.25rem);
         font-weight: 700;
         letter-spacing: -0.02em;
@@ -1283,7 +1444,7 @@ function GlobalStyles() {
       }
 
       .heading-sm {
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         font-size: 1rem;
         font-weight: 700;
         letter-spacing: -0.01em;
@@ -1310,15 +1471,14 @@ function GlobalStyles() {
       }
 
       .tabular-num {
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         font-variant-numeric: tabular-nums;
       }
 
-      /* Hero card */
       .hero-card {
         background: white;
         border: 1px solid var(--border);
-        box-shadow: 0 32px 120px rgba(14, 12, 8, 0.10);
+        box-shadow: 0 32px 120px rgba(14, 12, 8, 0.1);
       }
 
       .hero-grid-bg {
@@ -1329,7 +1489,6 @@ function GlobalStyles() {
         opacity: 0.4;
       }
 
-      /* Cards */
       .card {
         background: white;
         border: 1px solid var(--border);
@@ -1344,7 +1503,6 @@ function GlobalStyles() {
         box-shadow: 0 32px 120px rgba(14, 12, 8, 0.14);
       }
 
-      /* Faction card */
       .faction-card {
         position: relative;
         animation: fadeUp 0.45s ease-out both;
@@ -1359,20 +1517,26 @@ function GlobalStyles() {
         border-radius: 4px 0 0 4px;
       }
 
-      /* Submit section */
       .submit-card {
         background: var(--ink);
-        border: 1px solid rgba(255,255,255,0.06);
+        border: 1px solid rgba(255, 255, 255, 0.06);
         box-shadow: 0 24px 100px rgba(14, 12, 8, 0.28);
       }
 
       .submit-bg {
         background:
-          radial-gradient(circle at 20% 50%, rgba(232,66,10,0.18) 0%, transparent 50%),
-          radial-gradient(circle at 80% 20%, rgba(36,85,195,0.15) 0%, transparent 50%);
+          radial-gradient(
+            circle at 20% 50%,
+            rgba(232, 66, 10, 0.18) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(36, 85, 195, 0.15) 0%,
+            transparent 50%
+          );
       }
 
-      /* Pill badge */
       .pill-badge {
         display: inline-flex;
         align-items: center;
@@ -1386,7 +1550,6 @@ function GlobalStyles() {
         letter-spacing: 0.02em;
       }
 
-      /* Buttons */
       .btn-primary {
         display: inline-flex;
         align-items: center;
@@ -1398,9 +1561,14 @@ function GlobalStyles() {
         font-size: 0.9rem;
         transition: all 0.2s;
         text-decoration: none;
-        box-shadow: 0 4px 16px rgba(14,12,8,0.2);
+        box-shadow: 0 4px 16px rgba(14, 12, 8, 0.2);
       }
-      .btn-primary:hover { opacity: 0.88; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(14,12,8,0.25); }
+
+      .btn-primary:hover {
+        opacity: 0.88;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 24px rgba(14, 12, 8, 0.25);
+      }
 
       .btn-secondary {
         display: inline-flex;
@@ -1415,7 +1583,11 @@ function GlobalStyles() {
         transition: all 0.2s;
         text-decoration: none;
       }
-      .btn-secondary:hover { border-color: var(--ink); transform: translateY(-2px); }
+
+      .btn-secondary:hover {
+        border-color: var(--ink);
+        transform: translateY(-2px);
+      }
 
       .btn-accent {
         display: inline-flex;
@@ -1428,7 +1600,11 @@ function GlobalStyles() {
         font-size: 0.875rem;
         transition: all 0.2s;
       }
-      .btn-accent:hover { opacity: 0.9; transform: translateY(-1px); }
+
+      .btn-accent:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
 
       .btn-ghost {
         display: inline-flex;
@@ -1443,46 +1619,13 @@ function GlobalStyles() {
         transition: all 0.2s;
         text-decoration: none;
       }
-      .btn-ghost:hover { color: var(--ink); border-color: var(--ink); background: white; }
 
-      /* Tooltip */
-      .tooltip-btn { position: relative; }
-      .tooltip-btn::after {
-        content: attr(data-tooltip);
-        position: absolute;
-        bottom: calc(100% + 8px);
-        left: 50%;
-        transform: translateX(-50%);
-        background: var(--ink);
-        color: white;
-        padding: 6px 12px;
-        border-radius: 8px;
-        font-size: 11px;
-        font-weight: 600;
-        white-space: nowrap;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.15s ease;
-        z-index: 100;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+      .btn-ghost:hover {
+        color: var(--ink);
+        border-color: var(--ink);
+        background: white;
       }
-      .tooltip-btn::before {
-        content: '';
-        position: absolute;
-        bottom: calc(100% + 4px);
-        left: 50%;
-        transform: translateX(-50%);
-        border: 4px solid transparent;
-        border-top-color: var(--ink);
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.15s ease;
-        z-index: 100;
-      }
-      .tooltip-btn:hover::after,
-      .tooltip-btn:hover::before { opacity: 1; }
 
-      /* Inputs */
       .votes-input {
         min-height: 3.5rem;
         width: 100%;
@@ -1493,28 +1636,42 @@ function GlobalStyles() {
         padding: 0 1rem;
         font-size: 1.125rem;
         font-weight: 700;
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
         color: var(--ink);
       }
-      .votes-input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 4px rgba(36,85,195,0.12); }
+
+      .votes-input:focus {
+        border-color: var(--accent-blue);
+        box-shadow: 0 0 0 4px rgba(36, 85, 195, 0.12);
+      }
 
       .nickname-input {
         min-height: 3.5rem;
         border-radius: 1rem;
-        border: 2px solid rgba(255,255,255,0.12);
-        background: rgba(255,255,255,0.08);
+        border: 2px solid rgba(255, 255, 255, 0.18);
+        background: white;
         padding: 0 1rem;
         font-size: 1rem;
-        font-weight: 600;
-        color: white;
+        font-weight: 700;
+        color: var(--ink);
         outline: none;
-        transition: border-color 0.2s, box-shadow 0.2s;
-        backdrop-blur: 12px;
+        transition:
+          border-color 0.2s,
+          box-shadow 0.2s;
       }
-      .nickname-input::placeholder { color: rgba(255,255,255,0.35); }
-      .nickname-input:focus { border-color: rgba(255,255,255,0.35); box-shadow: 0 0 0 4px rgba(255,255,255,0.08); }
+
+      .nickname-input::placeholder {
+        color: rgba(14, 12, 8, 0.45);
+      }
+
+      .nickname-input:focus {
+        border-color: rgba(255, 255, 255, 0.6);
+        box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.16);
+      }
 
       .submit-btn {
         min-height: 3.5rem;
@@ -1523,41 +1680,83 @@ function GlobalStyles() {
         color: white;
         padding: 0 1.75rem;
         font-weight: 800;
-        font-family: 'Syne', sans-serif;
+        font-family: "Syne", sans-serif;
         font-size: 0.9rem;
         letter-spacing: 0.01em;
         transition: all 0.2s;
         white-space: nowrap;
-        box-shadow: 0 4px 20px rgba(232,66,10,0.35);
+        box-shadow: 0 4px 20px rgba(232, 66, 10, 0.35);
       }
-      .submit-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 28px rgba(232,66,10,0.4); opacity: 0.92; }
-      .submit-btn:disabled { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.35); box-shadow: none; cursor: not-allowed; }
 
-      /* Animations */
+      .submit-btn:hover:not(:disabled) {
+        transform: translateY(-1px);
+        box-shadow: 0 8px 28px rgba(232, 66, 10, 0.4);
+        opacity: 0.92;
+      }
+
+      .submit-btn:disabled {
+        background: rgba(255, 255, 255, 0.18);
+        color: rgba(255, 255, 255, 0.5);
+        box-shadow: none;
+        cursor: not-allowed;
+      }
+
       @keyframes fadeUp {
-        from { opacity: 0; transform: translateY(16px); }
-        to   { opacity: 1; transform: translateY(0); }
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
       }
 
       @keyframes pop {
-        from { opacity: 0; transform: scale(0.94) translateY(10px); }
-        to   { opacity: 1; transform: scale(1) translateY(0); }
+        from {
+          opacity: 0;
+          transform: scale(0.94) translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
       }
 
       @keyframes float {
-        0%, 100% { transform: translateY(0); }
-        50%       { transform: translateY(-5px); }
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-5px);
+        }
       }
 
       @keyframes bounce-subtle {
-        0%, 100% { transform: scale(1); }
-        30%       { transform: scale(1.12); }
-        60%       { transform: scale(0.97); }
+        0%,
+        100% {
+          transform: scale(1);
+        }
+        30% {
+          transform: scale(1.12);
+        }
+        60% {
+          transform: scale(0.97);
+        }
       }
 
-      .animate-pop   { animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
-      .animate-float { animation: float 3.5s ease-in-out infinite; }
-      .animate-bounce-subtle { animation: bounce-subtle 0.5s ease both; }
+      .animate-pop {
+        animation: pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+      }
+
+      .animate-float {
+        animation: float 3.5s ease-in-out infinite;
+      }
+
+      .animate-bounce-subtle {
+        animation: bounce-subtle 0.5s ease both;
+      }
     `}</style>
   );
 }
