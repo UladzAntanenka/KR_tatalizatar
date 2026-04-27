@@ -21,14 +21,14 @@ const FACTION_ORDER = [
 
 const FACTION_COLORS: Record<string, string> = {
   "Ваш Голас": "#E8420A",
-  "Спіс 'Еўрапейскі выбар": "#2455C3",
-  "Хватит бояться!": "#7C3AED",
-  "Рух Воля": "#059669",
-  "Аб'яднанная Грамадзянская Платформа": "#D97706",
+  "Еўрапейскі выбар": "#2455C3",
+  "Хватит Бояться!": "#7C3AED",
+  "Рух «Воля»": "#059669",
+  "Аб’яднаная грамадзянская платформа": "#D97706",
   "Наступ": "#DC2626",
-  "ЗАКОН и Правопорядок": "#0891B2",
-  "Блок беларускіх палітычных зьняволеных «Беларусы дзеяньня»": "#65A30D",
-  'Кааліцыя Латушка і Рух "За Свабоду': "#DB2777",
+  "ЗАКОН і Правапарадак": "#0891B2",
+  "Блок беларускі палітычных зняволеных «Беларусы дзеяння»": "#65A30D",
+  "Кааліцыя Латушка і Рух «За Свабоду»": "#DB2777",
 };
 
 const PROGRAM_LINKS: Record<string, string> = {
@@ -56,9 +56,10 @@ function getFactionColor(faction: string) {
   if (faction.includes("Латушка")) return "#DB2777";
   if (faction.includes("Еўрапейскі")) return "#2455C3";
   if (faction.includes("Хватит")) return "#7C3AED";
-  if (faction.includes("Грамадзянская")) return "#D97706";
+  if (faction.includes("Воля")) return "#059669";
+  if (faction.includes("грамадзянская")) return "#D97706";
   if (faction.includes("ЗАКОН")) return "#0891B2";
-  if (faction.includes("зьняволеных")) return "#65A30D";
+  if (faction.includes("Беларусы дзеяння")) return "#65A30D";
   return "#888";
 }
 
