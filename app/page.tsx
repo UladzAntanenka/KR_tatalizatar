@@ -128,29 +128,18 @@ export default function HomePage() {
   }, []);
 
   const orderedFactionEntries = useMemo(() => {
-    const used = new Set<string>();
-    const ordered: [string, typeof candidates][] = [];
-
-    for (const orderName of FACTION_ORDER) {
-      const exactFaction = Object.keys(factions).find(
-        (faction) =>
-          faction === orderName ||
-          faction.includes(orderName) ||
-          orderName.includes(faction) ||
-          (orderName.includes("Латушка") && faction.includes("Латушка"))
-      );
-
-      if (exactFaction && !used.has(exactFaction)) {
-        ordered.push([exactFaction, factions[exactFaction]]);
-        used.add(exactFaction);
-      }
-    }
-
-    for (const faction of Object.keys(factions)) {
-      if (!used.has(faction)) ordered.push([faction, factions[faction]]);
-    }
-
-    return ordered;
+    return FACTION_ORDER
+      .map((faction) => {
+        const factionCandidates = factions[faction];
+  
+        if (!factionCandidates) {
+          console.warn("Фракцыя не знойдзена:", faction);
+          return null;
+        }
+  
+        return [faction, factionCandidates] as const;
+      })
+      .filter(Boolean) as [string, typeof candidates][];
   }, [factions]);
 
   useEffect(() => {
