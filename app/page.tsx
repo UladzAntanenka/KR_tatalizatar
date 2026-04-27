@@ -1493,7 +1493,7 @@ function GlobalStyles() {
       .body-text {
         font-size: 1rem;
         line-height: 1.7;
-        color: var(--ink);
+        color: inherit;
       }
 
       .label-tag {
