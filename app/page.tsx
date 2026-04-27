@@ -542,9 +542,8 @@ export default function HomePage() {
 
             <h1 className="heading-xl mb-4">Дзякуй, {nickname.trim()}!</h1>
 
-            <p className="body-text mb-6 text-[var(--ink-2)]">
-              Ваш прагноз захаваны. Пасля абвяшчэння вынікаў 18 мая мы
-              апублікуем табліцу лідараў і статыстыку выбару.
+            <p className="mb-6 text-white/70">
+            Абярыце 80 кандыдатаў, увядзіце нікнэйм, прагноз колькасці ўдзельнікаў і прайдзіце праверку бяспекі.
             </p>
 
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-5">
